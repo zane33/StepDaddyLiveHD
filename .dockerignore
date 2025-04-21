@@ -1,0 +1,5 @@
+.web
+!.web/bun.lockb
+!.web/package.json
+.states
+.venv

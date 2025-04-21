@@ -1,0 +1,69 @@
+import asyncio
+import httpx
+from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
+from fastapi import Response, status
+from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
+
+
+step_daddy = StepDaddy()
+client = httpx.AsyncClient(http2=True, timeout=None)
+
+
+async def stream(channel_id: str):
+    try:
+        return Response(
+            content=await step_daddy.stream(channel_id),
+            media_type="application/vnd.apple.mpegurl",
+            headers={f"Content-Disposition": f"attachment; filename={channel_id}.m3u8"}
+        )
+    except IndexError as e:
+        return JSONResponse(content={"error": "Stream not found"}, status_code=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def key(path: str):
+    try:
+        return Response(
+            content=await step_daddy.key(path),
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": "attachment; filename=key"}
+        )
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def content(path: str):
+    try:
+        async def proxy_stream():
+            async with client.stream("GET", step_daddy.content_url(path), timeout=60) as response:
+                async for chunk in response.aiter_bytes(chunk_size=64 * 1024):
+                    yield chunk
+        return StreamingResponse(proxy_stream(), media_type="application/octet-stream")
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def update_channels():
+    while True:
+        await step_daddy.load_channels()
+        await asyncio.sleep(300)
+
+
+def get_channels():
+    return step_daddy.channels
+
+
+def get_channel(channel_id) -> Channel | None:
+    if not channel_id or channel_id == "":
+        return None
+    return next((channel for channel in step_daddy.channels if channel.id == channel_id), None)
+
+
+def playlist():
+    return Response(content=step_daddy.playlist(), media_type="application/vnd.apple.mpegurl", headers={"Content-Disposition": "attachment; filename=playlist.m3u8"})
+
+
+async def get_schedule():
+    return await step_daddy.schedule()
