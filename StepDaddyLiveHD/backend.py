@@ -47,8 +47,11 @@ async def content(path: str):
 
 async def update_channels():
     while True:
-        await step_daddy.load_channels()
-        await asyncio.sleep(300)
+        try:
+            await step_daddy.load_channels()
+            await asyncio.sleep(300)
+        except asyncio.CancelledError:
+            continue
 
 
 def get_channels():
