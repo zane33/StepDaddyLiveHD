@@ -4,7 +4,7 @@ import reflex as rx
 from urllib.parse import quote, urlparse
 from curl_cffi import AsyncSession
 from typing import List
-from .utils import encrypt, decrypt
+from .utils import encrypt, decrypt, urlsafe_base64
 from rxconfig import config
 
 
@@ -62,7 +62,10 @@ class StepDaddy:
             channel_name = "Vamos Spain"
         clean_channel_name = re.sub(r"\s*\(.*?\)", "", channel_name)
         meta = self._meta.get(clean_channel_name, {})
-        return Channel(id=channel_id, name=channel_name, tags=meta.get("tags", []), logo=meta.get("logo", "/missing.png"))
+        logo = meta.get("logo", "/missing.png")
+        if logo.startswith("http"):
+            logo = f"{config.api_url}/logo/{urlsafe_base64(logo)}"
+        return Channel(id=channel_id, name=channel_name, tags=meta.get("tags", []), logo=logo)
 
     async def stream(self, channel_id: str):
         url = f"{self._base_url}/stream/stream-{channel_id}.php"

@@ -1,9 +1,10 @@
+import os
 import asyncio
 import httpx
 from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
 from fastapi import Response, status
-from fastapi.responses import JSONResponse
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
+from .utils import urlsafe_base64_decode
 
 
 step_daddy = StepDaddy()
@@ -70,3 +71,25 @@ def playlist():
 
 async def get_schedule():
     return await step_daddy.schedule()
+
+
+async def logo(logo: str):
+    url = urlsafe_base64_decode(logo)
+    file = url.split("/")[-1]
+    if not os.path.exists("./logo-cache"):
+        os.makedirs("./logo-cache")
+    if os.path.exists(f"./logo-cache/{file}"):
+        return FileResponse(f"./logo-cache/{file}")
+    try:
+        response = await client.get(url, headers={"user-agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"})
+        if response.status_code == 200:
+            with open(f"./logo-cache/{file}", "wb") as f:
+                f.write(response.content)
+            return FileResponse(f"./logo-cache/{file}")
+        else:
+            return JSONResponse(content={"error": "Logo not found"}, status_code=status.HTTP_404_NOT_FOUND)
+    except httpx.ConnectTimeout:
+        return JSONResponse(content={"error": "Request timed out"}, status_code=status.HTTP_504_GATEWAY_TIMEOUT)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
