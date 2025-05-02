@@ -2,15 +2,17 @@ import os
 import asyncio
 import httpx
 from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
-from fastapi import Response, status
+from fastapi import Response, status, FastAPI
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from .utils import urlsafe_base64_decode
 
 
+fastapi_app = FastAPI()
 step_daddy = StepDaddy()
 client = httpx.AsyncClient(http2=True, timeout=None)
 
 
+@fastapi_app.get("/stream/{channel_id}.m3u8")
 async def stream(channel_id: str):
     try:
         return Response(
@@ -18,12 +20,13 @@ async def stream(channel_id: str):
             media_type="application/vnd.apple.mpegurl",
             headers={f"Content-Disposition": f"attachment; filename={channel_id}.m3u8"}
         )
-    except IndexError as e:
+    except IndexError:
         return JSONResponse(content={"error": "Stream not found"}, status_code=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@fastapi_app.get("/key/{path}")
 async def key(path: str):
     try:
         return Response(
@@ -35,6 +38,7 @@ async def key(path: str):
         return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@fastapi_app.get("/content/{path}")
 async def content(path: str):
     try:
         async def proxy_stream():
@@ -65,6 +69,7 @@ def get_channel(channel_id) -> Channel | None:
     return next((channel for channel in step_daddy.channels if channel.id == channel_id), None)
 
 
+@fastapi_app.get("/playlist.m3u8")
 def playlist():
     return Response(content=step_daddy.playlist(), media_type="application/vnd.apple.mpegurl", headers={"Content-Disposition": "attachment; filename=playlist.m3u8"})
 
@@ -73,6 +78,7 @@ async def get_schedule():
     return await step_daddy.schedule()
 
 
+@fastapi_app.get("/logo/{logo}")
 async def logo(logo: str):
     url = urlsafe_base64_decode(logo)
     file = url.split("/")[-1]

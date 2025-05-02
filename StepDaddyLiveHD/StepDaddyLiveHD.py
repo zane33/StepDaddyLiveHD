@@ -68,12 +68,7 @@ app = rx.App(
         appearance="dark",
         accent_color="red",
     ),
+    api_transformer=backend.fastapi_app,
 )
-
-app.api.add_api_route("/stream/{channel_id}.m3u8", backend.stream)
-app.api.add_api_route("/key/{path}", backend.key)
-app.api.add_api_route("/content/{path}", backend.content)
-app.api.add_api_route("/playlist.m3u8", backend.playlist)
-app.api.add_api_route("/logo/{logo}", backend.logo)
 
 app.register_lifespan_task(backend.update_channels)
