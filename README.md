@@ -15,7 +15,7 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 
 ## 🐳 Docker Installation (Recommended)
 
-> ⚠️ **Important:** If you plan to use this application across your local network (LAN), you must set `API_URL` to the **local IP address** of the device hosting the server, _not_ `localhost` or `127.0.0.1`.
+> ⚠️ **Important:** If you plan to use this application across your local network (LAN), you must set `API_URL` to the **local IP address** of the device hosting the server in `.env`.
 
 1. Make sure you have Docker and Docker Compose installed on your system.
 2. Clone the repository and navigate into the project directory:
@@ -69,13 +69,13 @@ docker run -p 3000:3000 step-daddy-live-hd
 - **SOCKS5**: Proxy DLHD traffic through a SOCKS5 server if needed.
 - **PROXY_CONTENT**: Proxy video content itself through your server (optional).
 
-### 🐳 Example Docker Command
+Edit the `.env` for docker compose.
+
+### Example Docker Command
 ```bash
 docker build --build-arg PROXY_CONTENT=FALSE --build-arg API_URL=https://example.com --build-arg SOCKS5=user:password@proxy.example.com:1080 -t step-daddy-live-hd .
 docker run -e PROXY_CONTENT=FALSE -e API_URL=https://example.com -e SOCKS5=user:password@proxy.example.com:1080 -p 3000:3000 step-daddy-live-hd
 ```
-
-Or edit the `docker-compose.yml`.
 
 ---
 

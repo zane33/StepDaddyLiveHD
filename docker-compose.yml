@@ -4,15 +4,17 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        PORT: 3000  # Default 3000
-        # API_URL: http://<local_ip_of_device>  # Replace with your local IP or domain if you want to access it across the network
-        # PROXY_CONTENT: "FALSE"  # Set to "FALSE" if you don't want to proxy content. Default is "TRUE"
-        # SOCKS5: ""  # Add SOCKS5 proxy details for DLHD request if needed
+        PORT: ${PORT}
+        API_URL: ${API_URL}
+        PROXY_CONTENT: ${PROXY_CONTENT}
+        SOCKS5: ${SOCKS5}
     environment:
-      PORT: 3000  # Default 3000
-      # API_URL: http://<local_ip_of_device>  # Replace with your local IP or domain if you want to access it across the network
-      # PROXY_CONTENT: "FALSE"  # Set to "FALSE" if you don't want to proxy content. Default is "TRUE"
-      # SOCKS5: ""  # Add SOCKS5 proxy details for DLHD request if needed
+      - PORT=${PORT}
+      - API_URL=${API_URL}
+      - PROXY_CONTENT=${PROXY_CONTENT}
+      - SOCKS5=${SOCKS5}
     ports:
-      - "3000:3000"  # Change the port also here if you change it above
+      - "${PORT}:${PORT}"
     restart: unless-stopped
+    env_file:
+      - .env
