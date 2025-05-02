@@ -76,7 +76,14 @@ class StepDaddy:
         source_response = await self._session.post(source_url, headers=self._headers(url))
 
         # Not generic
-        channel_key = re.compile("var channelKey = \"(.*)\";").findall(source_response.text)[-1]
+        channel_key = re.compile(r"var\s+channelKey\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
+        auth_ts = re.compile(r"var\s+authTs\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
+        auth_rnd = re.compile(r"var\s+authRnd\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
+        auth_sig = re.compile(r"var\s+authSig\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
+        auth_request_url = f"https://top2new.newkso.ru/auth.php?channel_id={channel_key}&ts={auth_ts}&rnd={auth_rnd}&sig={auth_sig}"
+        auth_response = await self._session.get(auth_request_url, headers=self._headers(source_url))
+        if auth_response.status_code != 200:
+            raise ValueError("Failed to get auth response")
         key_url = urlparse(source_url)
         key_url = f"{key_url.scheme}://{key_url.netloc}/server_lookup.php?channel_id={channel_key}"
         key_response = await self._session.get(key_url, headers=self._headers(source_url))
