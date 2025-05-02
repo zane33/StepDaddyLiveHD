@@ -26,11 +26,11 @@ async def stream(channel_id: str):
         return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@fastapi_app.get("/key/{path}")
-async def key(path: str):
+@fastapi_app.get("/key/{url}/{host}")
+async def key(url: str, host: str):
     try:
         return Response(
-            content=await step_daddy.key(path),
+            content=await step_daddy.key(url, host),
             media_type="application/octet-stream",
             headers={"Content-Disposition": "attachment; filename=key"}
         )

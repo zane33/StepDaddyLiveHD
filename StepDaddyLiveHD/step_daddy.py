@@ -92,15 +92,16 @@ class StepDaddy:
         for line in m3u8.text.split("\n"):
             if line.startswith("#EXT-X-KEY:"):
                 original_url = re.search(r'URI="(.*?)"', line).group(1)
-                line = line.replace(original_url, f"{config.api_url}/key/{encrypt(original_url)}")
+                line = line.replace(original_url, f"{config.api_url}/key/{encrypt(original_url)}/{encrypt(urlparse(source_url).netloc)}")
             elif line.startswith("http") and config.proxy_content:
                 line = f"{config.api_url}/content/{encrypt(line)}"
             m3u8_data += line + "\n"
         return m3u8_data
 
-    async def key(self, path: str):
-        path = decrypt(path)
-        response = await self._session.get(path, headers=self._headers("https://kisskissplay.cfd/", "https://kisskissplay.cfd"), timeout=60)
+    async def key(self, url: str, host: str):
+        url = decrypt(url)
+        host = decrypt(host)
+        response = await self._session.get(url, headers=self._headers(f"{host}/", host), timeout=60)
         if response.status_code != 200:
             raise Exception(f"Failed to get key")
         return response.content
