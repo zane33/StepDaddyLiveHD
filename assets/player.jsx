@@ -46,7 +46,6 @@ export function Player({ title, src }) {
         viewType='video'
         streamType='live'
         logLevel='warn'
-        crossOrigin="use-credentials"
         playsInline
         autoplay
         muted

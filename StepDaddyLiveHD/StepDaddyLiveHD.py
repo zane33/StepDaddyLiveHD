@@ -24,16 +24,18 @@ class State(rx.State):
 def index() -> rx.Component:
     return rx.box(
         navbar(
-            rx.input(
-                rx.input.slot(
-                    rx.icon("search"),
+            rx.box(
+                rx.input(
+                    rx.input.slot(
+                        rx.icon("search"),
+                    ),
+                    placeholder="Search channels...",
+                    on_change=State.set_search_query,
+                    value=State.search_query,
+                    width="100%",
+                    max_width="25rem",
+                    size="3",
                 ),
-                placeholder="Search channels...",
-                on_change=State.set_search_query,
-                value=State.search_query,
-                width="100%",
-                max_width="25rem",
-                size="3",
             ),
         ),
         rx.center(
