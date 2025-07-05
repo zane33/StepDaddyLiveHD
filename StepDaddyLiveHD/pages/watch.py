@@ -80,6 +80,23 @@ def watch() -> rx.Component:
     return rx.box(
         navbar(),
         rx.container(
+            rx.cond(
+                config.proxy_content,
+                rx.fragment(),
+                rx.card(
+                    rx.hstack(
+                        rx.icon(
+                            "info",
+                        ),
+                        rx.text(
+                            "Proxy content is disabled on this instance. Web Player won't work due to CORS.",
+                        ),
+                    ),
+                    width="100%",
+                    margin_bottom="1rem",
+                    background_color=rx.color("accent", 7),
+                ),
+            ),
             rx.center(
                 rx.card(
                     rx.cond(
