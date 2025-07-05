@@ -1,4 +1,5 @@
 import os
+import re
 import base64
 
 key_bytes = os.urandom(64)
@@ -36,3 +37,12 @@ def urlsafe_base64_decode(base64_string: str) -> str:
     base64_bytes = base64_string_padded.encode("utf-8")
     decoded_bytes = base64.urlsafe_b64decode(base64_bytes)
     return decoded_bytes.decode("utf-8")
+
+
+def extract_and_decode_var(var_name: str, response: str) -> str:
+    pattern = rf'var\s+{re.escape(var_name)}\s*=\s*atob\("([^"]+)"\);'
+    matches = re.findall(pattern, response)
+    if not matches:
+        raise ValueError(f"Variable '{var_name}' not found in response")
+    b64 = matches[-1]
+    return base64.b64decode(b64).decode("utf-8")

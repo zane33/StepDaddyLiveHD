@@ -4,7 +4,7 @@ import reflex as rx
 from urllib.parse import quote, urlparse
 from curl_cffi import AsyncSession
 from typing import List
-from .utils import encrypt, decrypt, urlsafe_base64
+from .utils import encrypt, decrypt, urlsafe_base64, extract_and_decode_var
 from rxconfig import config
 
 
@@ -22,7 +22,7 @@ class StepDaddy:
             self._session = AsyncSession(proxy="socks5://" + socks5)
         else:
             self._session = AsyncSession()
-        self._base_url = "https://daddylive.mp"
+        self._base_url = "https://thedaddy.click"
         self.channels = []
         with open("StepDaddyLiveHD/meta.json", "r") as f:
             self._meta = json.load(f)
@@ -77,10 +77,12 @@ class StepDaddy:
 
         # Not generic
         channel_key = re.compile(r"var\s+channelKey\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
-        auth_ts = re.compile(r"var\s+authTs\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
-        auth_rnd = re.compile(r"var\s+authRnd\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
-        auth_sig = re.compile(r"var\s+authSig\s*=\s*\"(.*?)\";").findall(source_response.text)[-1]
-        auth_request_url = f"https://top2new.newkso.ru/auth.php?channel_id={channel_key}&ts={auth_ts}&rnd={auth_rnd}&sig={auth_sig}"
+        auth_ts = extract_and_decode_var("__c", source_response.text)
+        auth_sig = extract_and_decode_var("__e", source_response.text)
+        auth_path = extract_and_decode_var("__b", source_response.text)
+        auth_rnd = extract_and_decode_var("__d", source_response.text)
+        auth_url = extract_and_decode_var("__a", source_response.text)
+        auth_request_url = f"{auth_url}{auth_path}?channel_id={channel_key}&ts={auth_ts}&rnd={auth_rnd}&sig={auth_sig}"
         auth_response = await self._session.get(auth_request_url, headers=self._headers(source_url))
         if auth_response.status_code != 200:
             raise ValueError("Failed to get auth response")
