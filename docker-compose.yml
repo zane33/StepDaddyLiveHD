@@ -6,13 +6,19 @@ services:
       args:
         PORT: ${PORT}
         API_URL: ${API_URL}
+        BACKEND_HOST_URI: ${BACKEND_HOST_URI}
+        DADDYLIVE_URI: ${DADDYLIVE_URI}
         PROXY_CONTENT: ${PROXY_CONTENT}
         SOCKS5: ${SOCKS5}
+        WORKERS: ${WORKERS}
     environment:
       - PORT=${PORT}
       - API_URL=${API_URL}
+      - BACKEND_HOST_URI=${BACKEND_HOST_URI}
+      - DADDYLIVE_URI=${DADDYLIVE_URI}
       - PROXY_CONTENT=${PROXY_CONTENT}
       - SOCKS5=${SOCKS5}
+      - WORKERS=${WORKERS}
     ports:
       - "${PORT}:${PORT}"
     restart: unless-stopped

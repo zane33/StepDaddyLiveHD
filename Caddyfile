@@ -2,15 +2,65 @@
 
 encode gzip
 
-@backend_routes path /_event/* /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/*
+# Add headers for better performance
+header {
+    # Enable CORS
+    Access-Control-Allow-Origin *
+    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
+    
+    # Security headers
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    X-XSS-Protection "1; mode=block"
+    
+    # Performance headers
+    X-Process-Time {http.response.header.X-Process-Time}
+}
+
+# Handle CORS preflight requests
+@cors_preflight method OPTIONS
+handle @cors_preflight {
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
+        Access-Control-Max-Age 86400
+    }
+    respond 204
+}
+
+# Rate limiting for backend routes
+@backend_routes path /_event/* /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
-	reverse_proxy localhost:8000
+    # Add rate limiting
+    rate_limit {
+        zone backend
+        events 100
+        window 10s
+    }
+    
+    reverse_proxy localhost:8000 {
+        # Connection pooling
+        lb_policy round_robin
+        lb_try_duration 1s
+        lb_try_interval 250ms
+        
+        # Health checks
+        health_uri /ping
+        health_interval 30s
+        health_timeout 5s
+        
+        # Timeouts
+        timeout 60s
+        dial_timeout 10s
+    }
 }
 
 handle {
-	root * /srv
-	route {
-		try_files {path} {path}/ /404.html
-		file_server
-	}
+    root * /srv
+    route {
+        try_files {path} {path}/ /404.html
+        file_server
+    }
 }

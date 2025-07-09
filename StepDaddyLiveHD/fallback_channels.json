@@ -1,0 +1,14 @@
+[
+  {
+    "id": "1",
+    "name": "Test Channel 1",
+    "tags": ["test"],
+    "logo": "/missing.png"
+  },
+  {
+    "id": "2", 
+    "name": "Test Channel 2",
+    "tags": ["test"],
+    "logo": "/missing.png"
+  }
+] 

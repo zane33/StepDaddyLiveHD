@@ -64,17 +64,57 @@ docker run -p 3000:3000 step-daddy-live-hd
 
 ### Environment Variables
 
-- **PORT**: Set a custom port for the server.
+- **PORT**: Set a custom port for the server (default: 3000).
 - **API_URL**: Set the domain or IP where the server is reachable.
+- **BACKEND_HOST_URI**: Set the backend host URI for custom backend configuration (optional).
+- **DADDYLIVE_URI**: Set the daddylive endpoint URI (default: https://thedaddy.click).
+- **WORKERS**: Set the number of worker processes for better performance (default: 4, recommended: 4-8).
 - **SOCKS5**: Proxy DLHD traffic through a SOCKS5 server if needed.
-- **PROXY_CONTENT**: Proxy video content itself through your server (optional).
+- **PROXY_CONTENT**: Proxy video content itself through your server (optional, default: TRUE).
 
 Edit the `.env` for docker compose.
 
+### Performance Features
+
+- **Multi-Worker Support**: Configurable worker processes for better concurrent handling
+- **Connection Pooling**: Efficient HTTP connection management
+- **Caching**: Stream and logo caching for improved performance
+- **Rate Limiting**: Built-in protection against overwhelming requests
+- **Health Monitoring**: Real-time health checks and performance metrics
+
+### Environment Variable Examples
+
+**Basic Configuration:**
+```bash
+PORT=3000
+API_URL=http://localhost:3000
+PROXY_CONTENT=TRUE
+WORKERS=4
+```
+
+**Advanced Configuration with Custom Endpoints:**
+```bash
+PORT=3000
+API_URL=https://your-domain.com
+BACKEND_HOST_URI=http://backend.your-domain.com:8000
+DADDYLIVE_URI=https://custom-daddylive.example.com
+PROXY_CONTENT=TRUE
+WORKERS=8
+SOCKS5=127.0.0.1:1080
+```
+
+**High-Performance Configuration:**
+```bash
+PORT=3000
+API_URL=https://your-domain.com
+WORKERS=8
+PROXY_CONTENT=TRUE
+```
+
 ### Example Docker Command
 ```bash
-docker build --build-arg PROXY_CONTENT=FALSE --build-arg API_URL=https://example.com --build-arg SOCKS5=user:password@proxy.example.com:1080 -t step-daddy-live-hd .
-docker run -e PROXY_CONTENT=FALSE -e API_URL=https://example.com -e SOCKS5=user:password@proxy.example.com:1080 -p 3000:3000 step-daddy-live-hd
+docker build --build-arg PROXY_CONTENT=FALSE --build-arg API_URL=https://example.com --build-arg BACKEND_HOST_URI=http://backend.example.com:8000 --build-arg DADDYLIVE_URI=https://custom-daddylive.example.com --build-arg WORKERS=8 --build-arg SOCKS5=user:password@proxy.example.com:1080 -t step-daddy-live-hd .
+docker run -e PROXY_CONTENT=FALSE -e API_URL=https://example.com -e BACKEND_HOST_URI=http://backend.example.com:8000 -e DADDYLIVE_URI=https://custom-daddylive.example.com -e WORKERS=8 -e SOCKS5=user:password@proxy.example.com:1080 -p 3000:3000 step-daddy-live-hd
 ```
 
 ---
