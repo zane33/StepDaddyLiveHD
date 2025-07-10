@@ -25,8 +25,8 @@ from StepDaddyLiveHD import backend
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins="*",
-    logger=True,
-    engineio_logger=True,
+    logger=False,
+    engineio_logger=False,
     path='/_event'
 )
 
