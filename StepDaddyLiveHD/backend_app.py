@@ -5,6 +5,7 @@ This creates a backend app for API endpoints and WebSocket communication.
 
 import os
 import sys
+import uvicorn
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
@@ -34,8 +35,11 @@ from StepDaddyLiveHD.StepDaddyLiveHD import State
 # Initialize the Reflex app with WebSocket support
 app = rx.App(_state=State)
 
-# Get the FastAPI app instance from Reflex
-fastapi_app = app.backend.app
+# Create a new FastAPI app
+fastapi_app = FastAPI()
+
+# Mount the Reflex app
+fastapi_app.mount("/_event", app._api)
 
 # Add CORS middleware
 fastapi_app.add_middleware(
@@ -87,7 +91,7 @@ async def health():
 
 if __name__ == "__main__":
     # Start the Reflex app with WebSocket support
-    app.compile()
+    app._compile()
     uvicorn.run(
         fastapi_app,
         host="0.0.0.0",

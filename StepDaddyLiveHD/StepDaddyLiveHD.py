@@ -128,20 +128,22 @@ class State(rx.State):
         if self.auto_refresh:
             # Start background refresh task
             return State.start_background_refresh
-    
-    @rx.background
+
     async def handle_channel_update(self):
-        """Handle real-time channel updates from WebSocket."""
+        """Handle real-time channel updates."""
         try:
-            # This will run in the background and handle channel updates
-            # The @rx.background decorator ensures proper WebSocket handling
-            while True:
-                await self.load_channels()
+            await self.load_channels()
+            if self.auto_refresh:
+                # Schedule next update
                 await asyncio.sleep(self.refresh_interval)
+                return State.handle_channel_update
         except Exception as e:
             self.connection_status = "error"
             # Don't raise the exception - just log it and continue
             print(f"Channel update error: {str(e)}")
+            # Retry after error with backoff
+            await asyncio.sleep(min(self.refresh_interval * 2, 600))  # Max 10 minute backoff
+            return State.handle_channel_update
 
 
 def status_bar() -> rx.Component:
