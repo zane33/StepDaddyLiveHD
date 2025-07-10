@@ -42,11 +42,13 @@ COPY . .
 # Make startup script executable
 RUN chmod +x /app/start.sh
 
-ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
+ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5 BACKEND_PORT
 
 # Set environment variables for the build
 ENV PORT=${PORT:-3232} \
-    REFLEX_API_URL=${API_URL:-http://localhost:${PORT:-3232}} \
+    BACKEND_PORT=${BACKEND_PORT:-8005} \
+    REFLEX_API_URL=http://192.168.4.5:${BACKEND_PORT:-8005} \
+    API_URL=${API_URL:-http://192.168.4.5:${PORT:-3232}} \
     BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
@@ -87,10 +89,12 @@ RUN apt-get update -y && apt-get install -y \
 # Verify Node.js and npm are available in final image
 RUN node --version && npm --version
 
-ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
+ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5 BACKEND_PORT
 ENV PATH="/app/.venv/bin:$PATH" \
     PORT=${PORT:-3232} \
-    REFLEX_API_URL=${API_URL:-http://localhost:${PORT:-3232}} \
+    BACKEND_PORT=${BACKEND_PORT:-8005} \
+    REFLEX_API_URL=http://192.168.4.5:${BACKEND_PORT:-8005} \
+    API_URL=${API_URL:-http://192.168.4.5:${PORT:-3232}} \
     BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     REDIS_URL=redis://localhost \
