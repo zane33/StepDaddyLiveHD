@@ -8,15 +8,19 @@ ARG API_URL
 # edge by the given platform.
 FROM python:3.13 AS builder
 
-# Install system dependencies including Node.js and Bun
+# Install system dependencies including Node.js and npm
 RUN apt-get update && apt-get install -y \
     curl \
     unzip \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bun for Reflex frontend builds
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:$PATH"
+# Install Node.js and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Verify Node.js and npm installation
+RUN node --version && npm --version
 
 RUN mkdir -p /app/.web
 RUN python -m venv /app/.venv
@@ -62,8 +66,18 @@ RUN mkdir -p /srv && \
 # Final image with only necessary files
 FROM python:3.13-slim
 
-# Install Caddy and redis server inside image
-RUN apt-get update -y && apt-get install -y caddy redis-server curl && rm -rf /var/lib/apt/lists/*
+# Install Caddy, redis server, and Node.js/npm inside final image
+RUN apt-get update -y && apt-get install -y \
+    caddy \
+    redis-server \
+    curl \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify Node.js and npm are available in final image
+RUN node --version && npm --version
 
 ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
 ENV PATH="/app/.venv/bin:$PATH" \
