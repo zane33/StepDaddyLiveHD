@@ -10,8 +10,9 @@ services:
       - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
     environment:
       - PORT=${PORT:-3232}
-      - API_URL=${API_URL:-http://localhost:8005}
-      - BACKEND_HOST_URI=${BACKEND_HOST_URI:-http://localhost:8005}
+      - API_URL=${API_URL:-http://192.168.4.5:8005}
+      - BACKEND_HOST_URI=${BACKEND_HOST_URI:-http://192.168.4.5:8005}
+      - REFLEX_API_URL=${REFLEX_API_URL:-http://192.168.4.5:8005}
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
