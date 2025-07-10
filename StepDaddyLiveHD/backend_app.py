@@ -47,6 +47,13 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         print(f"WebSocket connected: {websocket.client}")
         
+        # Send initial Engine.IO handshake response
+        # Format: message_type + message_data
+        # 0 = open message with session info
+        handshake_response = '0{"sid":"websocket_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
+        await websocket.send_text(handshake_response)
+        print(f"Sent handshake: {handshake_response}")
+        
         # Keep the connection alive and handle Engine.IO-style messages
         while True:
             try:
@@ -54,8 +61,17 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = await websocket.receive_text()
                 print(f"Received WebSocket message: {data}")
                 
-                # Send a simple acknowledgment
-                await websocket.send_text("40")  # Engine.IO message type for connection
+                # Handle different Engine.IO message types
+                if data.startswith("2"):  # ping message
+                    await websocket.send_text("3")  # pong response
+                    print("Sent pong response")
+                elif data.startswith("40"):  # Socket.IO connect
+                    await websocket.send_text("40")  # Socket.IO connect ack
+                    print("Sent Socket.IO connect ack")
+                else:
+                    # Echo other messages
+                    await websocket.send_text(data)
+                    print(f"Echoed message: {data}")
                 
             except WebSocketDisconnect:
                 print(f"WebSocket disconnected: {websocket.client}")
@@ -75,6 +91,11 @@ async def websocket_endpoint_with_params(websocket: WebSocket, path: str):
         await websocket.accept()
         print(f"WebSocket connected with path {path}: {websocket.client}")
         
+        # Send initial Engine.IO handshake response
+        handshake_response = '0{"sid":"websocket_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
+        await websocket.send_text(handshake_response)
+        print(f"Sent handshake on {path}: {handshake_response}")
+        
         # Keep the connection alive
         while True:
             try:
@@ -82,8 +103,17 @@ async def websocket_endpoint_with_params(websocket: WebSocket, path: str):
                 data = await websocket.receive_text()
                 print(f"Received WebSocket message on {path}: {data}")
                 
-                # Send a simple acknowledgment
-                await websocket.send_text("40")  # Engine.IO message type for connection
+                # Handle different Engine.IO message types
+                if data.startswith("2"):  # ping message
+                    await websocket.send_text("3")  # pong response
+                    print(f"Sent pong response on {path}")
+                elif data.startswith("40"):  # Socket.IO connect
+                    await websocket.send_text("40")  # Socket.IO connect ack
+                    print(f"Sent Socket.IO connect ack on {path}")
+                else:
+                    # Echo other messages
+                    await websocket.send_text(data)
+                    print(f"Echoed message on {path}: {data}")
                 
             except WebSocketDisconnect:
                 print(f"WebSocket disconnected from {path}: {websocket.client}")
