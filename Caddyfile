@@ -41,6 +41,8 @@ handle @websocket {
         transport http {
             versions h1
         }
+        header_up -Origin  # Remove Origin header to prevent CORS issues
+        header_up -Sec-WebSocket-Protocol  # Remove WebSocket protocol header
         header_up Host {http.request.host}
         header_up X-Real-IP {http.request.remote.host}
         header_up X-Forwarded-For {http.request.remote.host}
