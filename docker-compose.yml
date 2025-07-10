@@ -10,13 +10,15 @@ services:
       - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
     environment:
       - PORT=${PORT:-3232}
-      - API_URL=${API_URL:-http://192.168.4.5:8005}
-      - BACKEND_HOST_URI=${BACKEND_HOST_URI:-http://192.168.4.5:8005}
-      - REFLEX_API_URL=${REFLEX_API_URL:-http://192.168.4.5:8005}
+      - BACKEND_PORT=${BACKEND_PORT:-8005}
+      # API_URL is for frontend public access
+      - API_URL=${API_URL:-http://192.168.4.5:3232}
+      # REFLEX_API_URL and BACKEND_HOST_URI should match and point to backend port
+      - REFLEX_API_URL=http://192.168.4.5:8005
+      - BACKEND_HOST_URI=http://192.168.4.5:8005
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
       - WORKERS=${WORKERS:-6}
-      - BACKEND_PORT=${BACKEND_PORT:-8005}
     network_mode: host
     restart: unless-stopped
