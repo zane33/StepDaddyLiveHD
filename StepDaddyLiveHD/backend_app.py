@@ -1,6 +1,6 @@
 """
 Backend-only entry point for StepDaddyLiveHD.
-This avoids frontend compilation issues in production.
+This runs the full Reflex app in production mode to include WebSocket endpoints.
 """
 
 import os
@@ -12,16 +12,15 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Set environment variables to prevent frontend compilation at runtime
+# Set environment variables for production mode
 os.environ["REFLEX_ENV"] = "prod"
-os.environ["REFLEX_FRONTEND_ONLY"] = "true"
-os.environ["REFLEX_NO_COMPILE"] = "true"
 
-# Import only the backend, avoiding any Reflex app imports
+# Import the full Reflex app
+from StepDaddyLiveHD.StepDaddyLiveHD import app as reflex_app
 from StepDaddyLiveHD import backend
 
-# Create a FastAPI app from the backend
-app = backend.fastapi_app
+# Get the FastAPI app from the Reflex app (includes WebSocket endpoints)
+app = reflex_app.api
 
 # Add the lifespan task for channel updates
 @app.on_event("startup")

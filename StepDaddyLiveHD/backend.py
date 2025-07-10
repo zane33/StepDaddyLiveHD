@@ -8,6 +8,7 @@ from typing import Optional
 from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
 from fastapi import Response, status, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from .utils import urlsafe_base64_decode
 import json
 
@@ -20,6 +21,15 @@ fastapi_app = FastAPI(
     title="StepDaddyLiveHD API",
     description="IPTV proxy API",
     version="1.0.0"
+)
+
+# Add CORS middleware
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with your frontend domains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Create HTTP client with connection pooling
