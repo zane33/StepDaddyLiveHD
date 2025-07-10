@@ -37,7 +37,7 @@ handle @cors_preflight {
 }
 
 handle @websocket {
-    reverse_proxy localhost:{$BACKEND_PORT} {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT} {
         transport http {
             versions h1
         }
@@ -53,7 +53,7 @@ handle @websocket {
 # Backend API routes
 @backend_routes path /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
-    reverse_proxy localhost:{$BACKEND_PORT} {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT} {
         transport http {
             dial_timeout 10s
             response_header_timeout 60s
