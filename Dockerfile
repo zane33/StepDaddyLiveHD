@@ -25,10 +25,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Install reflex helper utilities like bun/node
-COPY rxconfig.py ./
-RUN reflex init
-
 # Copy local context to `/app` inside container (see .dockerignore)
 COPY . .
 
@@ -43,23 +39,28 @@ ENV PORT=${PORT:-3232} \
     API_URL=${API_URL:-http://192.168.4.5:3232} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
-    SOCKS5=${SOCKS5:-""}
+    SOCKS5=${SOCKS5:-""} \
+    REFLEX_ENV=prod \
+    REFLEX_FRONTEND_ONLY=true
 
-# Download other npm dependencies and compile frontend
-RUN mkdir -p /srv && \
-    echo "Building frontend with API_URL=$API_URL" && \
+# Initialize Reflex and build frontend
+RUN echo "Building frontend with API_URL=$API_URL" && \
     echo "Current directory: $(pwd)" && \
     echo "Node.js version: $(node --version)" && \
     echo "npm version: $(npm --version)" && \
     echo "Reflex version: $(reflex --version)" && \
-    (reflex export --loglevel debug --frontend-only --no-zip && \
-     echo "Reflex export completed successfully" && \
-     ls -la .web/build/client/ && \
+    mkdir -p /srv && \
+    (cd /app && \
+     reflex init && \
+     cd .web && \
+     npm install --legacy-peer-deps && \
+     cd .. && \
+     reflex export --frontend-only --no-zip && \
      mv .web/build/client/* /srv/ && \
      rm -rf .web && \
      echo "Frontend build successful - contents of /srv:" && \
      ls -la /srv/) || \
-    (echo "Reflex export failed, creating minimal frontend" && \
+    (echo "Frontend build failed, creating minimal frontend" && \
      mkdir -p /srv && \
      echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p><p>Check the Docker build logs for more information.</p></body></html>" > /srv/index.html && \
      echo "Minimal frontend created")
@@ -90,7 +91,10 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
     SOCKS5=${SOCKS5:-""} \
-    WORKERS=${WORKERS:-6}
+    WORKERS=${WORKERS:-6} \
+    REFLEX_ENV=prod \
+    REFLEX_FRONTEND_ONLY=true \
+    REFLEX_SKIP_COMPILE=1
 
 WORKDIR /app
 COPY --from=builder /app /app

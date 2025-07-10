@@ -5,6 +5,7 @@ echo "Starting StepDaddyLiveHD services..."
 # Set environment variables to prevent frontend compilation at runtime
 export REFLEX_ENV=prod
 export REFLEX_FRONTEND_ONLY=true
+export REFLEX_SKIP_COMPILE=1
 
 # Start Redis in the background
 echo "Starting Redis..."
@@ -35,4 +36,4 @@ BACKEND_PORT=${BACKEND_PORT:-8005}
 echo "Starting Reflex backend with $WORKERS workers on port $BACKEND_PORT..."
 
 # Start the backend with multiple workers using the FastAPI app
-cd /app && exec uvicorn StepDaddyLiveHD.backend_app:app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS 
+cd /app && exec uvicorn StepDaddyLiveHD.backend_app:fastapi_app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS 

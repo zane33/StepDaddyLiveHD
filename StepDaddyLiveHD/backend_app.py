@@ -15,6 +15,7 @@ sys.path.insert(0, str(project_root))
 
 # Set environment variables for production mode
 os.environ["REFLEX_ENV"] = "prod"
+os.environ["REFLEX_SKIP_COMPILE"] = "1"  # Skip frontend compilation in production
 
 # Get environment variables
 api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
@@ -91,7 +92,10 @@ async def health():
 
 if __name__ == "__main__":
     # Start the Reflex app with WebSocket support
-    app._compile()
+    # Skip compilation in production/container environments
+    if not os.environ.get("REFLEX_SKIP_COMPILE"):
+        app._compile()
+    
     uvicorn.run(
         fastapi_app,
         host="0.0.0.0",
