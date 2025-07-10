@@ -6,7 +6,7 @@ proxy_content = os.environ.get("PROXY_CONTENT", "TRUE").upper() == "TRUE"
 socks5 = os.environ.get("SOCKS5", "")
 port = os.environ.get("PORT", "3232")
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
-api_url = os.environ.get("API_URL", f"http://192.168.4.5:{port}")  # Use frontend port from environment
+api_url = os.environ["API_URL"]  # Use API_URL directly from environment
 daddylive_uri = os.environ.get("DADDYLIVE_URI", "https://thedaddy.click")
 
 print(f"PROXY_CONTENT: {proxy_content}")
