@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .utils import urlsafe_base64_decode
 import json
+from urllib.parse import urlparse, urlunparse
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 # Get environment variables
 api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
+backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
+
+# Parse API_URL to create WebSocket URL with backend port
+parsed_url = urlparse(api_url)
+ws_url = urlunparse(parsed_url._replace(netloc=f"{parsed_url.hostname}:{backend_port}"))
 
 # Create FastAPI app with better configuration
 fastapi_app = FastAPI(
@@ -26,13 +32,17 @@ fastapi_app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
+# Add CORS middleware with consolidated settings
 fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         api_url,  # Frontend URL from environment
-        "http://localhost:3232",     # Local development
-        "http://127.0.0.1:3232",    # Alternative local
+        ws_url,   # WebSocket URL with backend port
+        "http://localhost:3232",     # Local development frontend
+        f"http://localhost:{backend_port}",  # Local development backend
+        "http://127.0.0.1:3232",    # Alternative local frontend
+        f"http://127.0.0.1:{backend_port}",  # Alternative local backend
+        "*",  # Allow all origins for WebSocket
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -60,10 +70,28 @@ cache_ttl = 300  # 5 minutes
 
 logger.info("Backend initialized with connection pooling")
 
+# Start channel update task
+channel_update_task = None
+
+@fastapi_app.on_event("startup")
+async def startup_event():
+    global channel_update_task
+    # Start the channel update background task
+    channel_update_task = asyncio.create_task(update_channels())
+    logger.info("Channel update background task started")
+
 @fastapi_app.on_event("shutdown")
 async def shutdown_event():
+    global channel_update_task
+    # Cancel the channel update task
+    if channel_update_task:
+        channel_update_task.cancel()
+        try:
+            await channel_update_task
+        except asyncio.CancelledError:
+            pass
     await client.aclose()
-    logger.info("HTTP client closed")
+    logger.info("HTTP client and background tasks closed")
 
 @fastapi_app.middleware("http")
 async def add_process_time_header(request: Request, call_next):

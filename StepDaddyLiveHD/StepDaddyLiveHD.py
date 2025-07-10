@@ -127,7 +127,21 @@ class State(rx.State):
         await self.load_channels()
         if self.auto_refresh:
             # Start background refresh task
-            asyncio.create_task(self.start_background_refresh())
+            return State.start_background_refresh
+    
+    @rx.background
+    async def handle_channel_update(self):
+        """Handle real-time channel updates from WebSocket."""
+        try:
+            # This will run in the background and handle channel updates
+            # The @rx.background decorator ensures proper WebSocket handling
+            while True:
+                await self.load_channels()
+                await asyncio.sleep(self.refresh_interval)
+        except Exception as e:
+            self.connection_status = "error"
+            # Don't raise the exception - just log it and continue
+            print(f"Channel update error: {str(e)}")
 
 
 def status_bar() -> rx.Component:

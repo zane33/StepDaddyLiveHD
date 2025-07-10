@@ -6,6 +6,7 @@ This creates a backend app for API endpoints and WebSocket communication.
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -16,6 +17,11 @@ os.environ["REFLEX_ENV"] = "prod"
 
 # Get environment variables
 api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
+backend_port = int(os.environ.get("BACKEND_PORT", "8005"))  # Match frontend default
+
+# Parse API_URL to create WebSocket URL with backend port
+parsed_url = urlparse(api_url)
+ws_url = urlunparse(parsed_url._replace(netloc=f"{parsed_url.hostname}:{backend_port}"))
 
 # Import required modules
 import reflex as rx
@@ -26,18 +32,21 @@ from StepDaddyLiveHD import backend
 from StepDaddyLiveHD.StepDaddyLiveHD import State
 
 # Initialize the Reflex app with WebSocket support
-app = rx.App(_state=State)  # Changed from state= to _state=
+app = rx.App(_state=State)
 
 # Get the FastAPI app instance from Reflex
-fastapi_app = app.api.fastapi_app
+fastapi_app = app.backend.app
 
 # Add CORS middleware
 fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         api_url,  # Frontend URL from environment
-        "http://localhost:3232",     # Local development
-        "http://127.0.0.1:3232",    # Alternative local
+        ws_url,   # WebSocket URL with backend port
+        "http://localhost:3232",     # Local development frontend
+        f"http://localhost:{backend_port}",  # Local development backend
+        "http://127.0.0.1:3232",    # Alternative local frontend
+        f"http://127.0.0.1:{backend_port}",  # Alternative local backend
         "*",  # Allow all origins for WebSocket
     ],
     allow_credentials=True,
@@ -77,14 +86,12 @@ async def health():
     }
 
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("BACKEND_PORT", 8000))
     # Start the Reflex app with WebSocket support
     app.compile()
     uvicorn.run(
         fastapi_app,
         host="0.0.0.0",
-        port=port,
+        port=backend_port,  # Use the same backend_port as frontend config
         ws="websockets",  # Enable WebSocket support
         ws_ping_interval=20,  # Keep connections alive
         ws_ping_timeout=30,
