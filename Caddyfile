@@ -31,7 +31,7 @@ handle @cors_preflight {
 
 # WebSocket endpoint
 @websocket {
-    path /_event
+    path /_event*
     header Connection *Upgrade*
     header Upgrade websocket
 }
@@ -41,22 +41,30 @@ handle @websocket {
         transport http {
             versions h1
         }
+        header_up Host {http.request.host}
+        header_up X-Real-IP {http.request.remote.host}
+        header_up X-Forwarded-For {http.request.remote.host}
+        header_up X-Forwarded-Proto {http.request.scheme}
     }
 }
 
 # Backend API routes
 @backend_routes path /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
-	reverse_proxy localhost:{$BACKEND_PORT} {
-		transport http {
-			dial_timeout 10s
-			response_header_timeout 60s
-		}
-	}
+    reverse_proxy localhost:{$BACKEND_PORT} {
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 60s
+        }
+        header_up Host {http.request.host}
+        header_up X-Real-IP {http.request.remote.host}
+        header_up X-Forwarded-For {http.request.remote.host}
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }
 }
 
 handle {
-	root * /srv
-	try_files {path} {path}/ /404.html
-	file_server
+    root * /srv
+    try_files {path} {path}/ /404.html
+    file_server
 }
