@@ -8,6 +8,16 @@ ARG API_URL
 # edge by the given platform.
 FROM python:3.13 AS builder
 
+# Install system dependencies including Node.js and Bun
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bun for Reflex frontend builds
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
 RUN mkdir -p /app/.web
 RUN python -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
@@ -30,7 +40,11 @@ RUN chmod +x /app/start.sh
 
 ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
 # Download other npm dependencies and compile frontend
-RUN REFLEX_API_URL=${API_URL:-http://localhost:3000} reflex export --loglevel debug --frontend-only --no-zip && mv .web/build/client/* /srv/ && rm -rf .web
+RUN mkdir -p /srv && \
+    (REFLEX_API_URL=${API_URL:-http://localhost:3000} reflex export --loglevel debug --frontend-only --no-zip && mv .web/build/client/* /srv/ && rm -rf .web) || \
+    (echo "Reflex export failed, creating minimal frontend" && \
+     mkdir -p /srv && \
+     echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p></body></html>" > /srv/index.html)
 
 
 # Final image with only necessary files

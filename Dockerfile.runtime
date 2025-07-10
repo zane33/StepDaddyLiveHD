@@ -1,0 +1,67 @@
+# Runtime build Dockerfile - builds frontend at startup
+FROM python:3.13-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    caddy \
+    redis-server \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bun for Reflex
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application files
+COPY . .
+
+# Make startup script executable
+RUN chmod +x /app/start.sh
+
+# Set environment variables
+ARG PORT=3000
+ARG API_URL
+ARG BACKEND_HOST_URI
+ARG DADDYLIVE_URI=https://thedaddy.click
+ARG PROXY_CONTENT=TRUE
+ARG SOCKS5
+ARG WORKERS=4
+
+ENV PORT=$PORT \
+    REFLEX_API_URL=${API_URL:-http://localhost:$PORT} \
+    BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} \
+    DADDYLIVE_URI=$DADDYLIVE_URI \
+    PROXY_CONTENT=$PROXY_CONTENT \
+    SOCKS5=${SOCKS5:-""} \
+    WORKERS=$WORKERS \
+    REDIS_URL=redis://localhost \
+    PYTHONUNBUFFERED=1
+
+EXPOSE $PORT
+
+# Create a startup script that builds frontend at runtime
+RUN echo '#!/bin/bash\n\
+echo "Building frontend at runtime..."\n\
+mkdir -p /srv\n\
+cd /app\n\
+if reflex export --loglevel debug --frontend-only --no-zip; then\n\
+    mv .web/build/client/* /srv/\n\
+    rm -rf .web\n\
+    echo "Frontend built successfully"\n\
+else\n\
+    echo "Frontend build failed, creating minimal frontend"\n\
+    echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p><p>API endpoints are available at /ping, /health, /playlist.m3u8</p></body></html>" > /srv/index.html\n\
+fi\n\
+echo "Starting services..."\n\
+exec /app/start.sh\n\
+' > /app/runtime-start.sh && chmod +x /app/runtime-start.sh
+
+# Start with runtime build
+CMD ["/app/runtime-start.sh"] 

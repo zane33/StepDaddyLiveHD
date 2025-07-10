@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  stepdaddylivehd:
+    build:
+      context: .
+      dockerfile: Dockerfile.alternative
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - API_URL=http://localhost:3000
+      - DADDYLIVE_URI=https://thedaddy.click
+      - PROXY_CONTENT=TRUE
+      - WORKERS=4
+    restart: unless-stopped
+    container_name: stepdaddylivehd 
