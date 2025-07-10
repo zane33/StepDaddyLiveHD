@@ -28,5 +28,5 @@ echo "Caddy started successfully"
 WORKERS=${WORKERS:-4}
 echo "Starting Reflex backend with $WORKERS workers..."
 
-# Start the backend with multiple workers using uvicorn
-exec reflex run --env prod --backend-only --backend-port 8000 --workers $WORKERS 
+# Start the backend with multiple workers using uvicorn directly
+cd /app && exec uvicorn StepDaddyLiveHD.StepDaddyLiveHD:app --host 0.0.0.0 --port 8000 --workers $WORKERS 
