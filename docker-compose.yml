@@ -11,7 +11,7 @@ services:
     environment:
       - PORT=${PORT:-3232}
       - BACKEND_PORT=${BACKEND_PORT:-8005}
-      - API_URL=${API_URL:-http://192.168.4.5:3232}
+      - API_URL=${API_URL:-http://192.168.4.5:3232}  # Allow override but default to frontend port
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
