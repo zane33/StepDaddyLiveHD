@@ -4,7 +4,7 @@ import os
 
 proxy_content = os.environ.get("PROXY_CONTENT", "TRUE").upper() == "TRUE"
 socks5 = os.environ.get("SOCKS5", "")
-port = os.environ.get("PORT", "3000")
+port = os.environ.get("PORT", "3232")
 backend_host_uri = os.environ.get("BACKEND_HOST_URI", "")
 daddylive_uri = os.environ.get("DADDYLIVE_URI", "https://thedaddy.click")
 
