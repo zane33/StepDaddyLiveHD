@@ -16,5 +16,3 @@ services:
       - SOCKS5=${SOCKS5:-}
       - WORKERS=${WORKERS:-6}
     restart: unless-stopped
-    env_file:
-      - .env
