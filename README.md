@@ -470,6 +470,275 @@ docker run \
 
 ---
 
+## 🔄 Frontend-Backend Architecture
+
+StepDaddyLiveHD uses a modern architecture that separates the frontend and backend while maintaining real-time communication capabilities. Here's how the components interact:
+
+### 🏗️ Architecture Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Caddy Proxy   │    │   Backend       │
+│   (React/JS)    │◄──►│   (Port 3232)   │◄──►│   (FastAPI)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Socket.IO       │    │ Static Files    │    │ IPTV Data       │
+│ WebSocket       │    │ & Routing       │    │ Processing      │
+│ (/_event)       │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 🌐 Frontend Components
+
+The frontend is built with **React** and **Reflex**, providing a responsive web interface for browsing and streaming TV channels.
+
+#### **Key Frontend Features:**
+- **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
+- **🔍 Real-time Search**: Live filtering of channels and events
+- **📺 Video Player**: Built-in web player with adaptive streaming
+- **📊 Real-time Updates**: Live channel status and event information
+- **🎯 Event Detection**: Automatic detection of live sports and events
+
+#### **Frontend Technologies:**
+- **React**: Component-based UI framework
+- **Reflex**: Python-to-React transpiler
+- **Socket.IO Client**: Real-time WebSocket communication
+- **Adaptive Video Player**: HLS/DASH streaming support
+- **Responsive CSS**: Mobile-first design approach
+
+### 🔧 Backend Components
+
+The backend is built with **FastAPI** and provides both REST API endpoints and real-time WebSocket communication.
+
+#### **Key Backend Features:**
+- **🚀 FastAPI**: High-performance async web framework
+- **🔄 Real-time Communication**: Socket.IO server for live updates
+- **📊 Data Processing**: Channel parsing and event detection
+- **🎭 Content Proxying**: Optional video stream proxying
+- **🔒 CORS Handling**: Cross-origin request management
+
+#### **Backend Technologies:**
+- **FastAPI**: Modern Python web framework
+- **Socket.IO**: Real-time bidirectional communication
+- **Uvicorn**: ASGI server with multiple workers
+- **Aiohttp**: Async HTTP client for external requests
+- **Python 3.13**: Latest Python with async/await support
+
+### 📡 Communication Protocols
+
+#### **1. HTTP/REST API**
+The backend exposes several REST endpoints for standard operations:
+
+```
+GET  /                          # Frontend static files
+GET  /api/channels             # Get all available channels
+GET  /api/events               # Get live events and sports
+GET  /api/search?q=<query>     # Search channels and events
+GET  /playlist.m3u8            # Download M3U8 playlist
+GET  /stream/<channel_id>      # Stream video content
+GET  /health                   # Health check endpoint
+```
+
+#### **2. WebSocket/Socket.IO Communication**
+Real-time features use Socket.IO over WebSocket connection at `/_event`:
+
+**Frontend → Backend Events:**
+```javascript
+// Connect to Socket.IO server
+const socket = io('ws://localhost:3232/_event');
+
+// Join channel updates room
+socket.emit('join_channel_updates');
+
+// Request live event updates
+socket.emit('get_live_events');
+
+// Search for channels
+socket.emit('search_channels', { query: 'sports' });
+```
+
+**Backend → Frontend Events:**
+```javascript
+// Receive channel status updates
+socket.on('channel_status', (data) => {
+  // Update channel availability in real-time
+  updateChannelStatus(data.channel_id, data.status);
+});
+
+// Receive live event notifications
+socket.on('live_event', (data) => {
+  // Show new live events as they're detected
+  showLiveEventNotification(data);
+});
+
+// Receive search results
+socket.on('search_results', (data) => {
+  // Update search results in real-time
+  updateSearchResults(data.results);
+});
+```
+
+### 🔄 Data Flow Examples
+
+#### **1. Channel Browsing Flow**
+```
+1. User opens homepage
+   Frontend → GET /api/channels → Backend
+   
+2. Backend fetches channel data
+   Backend → External IPTV API → Channel List
+   
+3. Frontend receives channel list
+   Backend → JSON Response → Frontend
+   
+4. Frontend renders channel grid
+   Frontend → React Components → User Interface
+```
+
+#### **2. Real-time Event Detection**
+```
+1. Backend monitors external sources
+   Backend → Periodic API Calls → Event Sources
+   
+2. New live event detected
+   Backend → Event Processing → Live Event Data
+   
+3. Broadcast to all connected clients
+   Backend → Socket.IO Emit → All Frontend Clients
+   
+4. Frontend shows live notification
+   Frontend → Event Handler → UI Notification
+```
+
+#### **3. Video Streaming Flow**
+```
+With PROXY_CONTENT=TRUE:
+User → Frontend → Backend → External Stream → Backend → User
+
+With PROXY_CONTENT=FALSE:
+User → Frontend → Backend → Stream URL → Frontend → External Stream
+```
+
+### 🛠️ Configuration Impact on Communication
+
+#### **API_URL Configuration**
+- **Purpose**: Defines how frontend communicates with backend
+- **Local Setup**: `http://192.168.1.100:3232`
+- **Production**: `https://yourdomain.com`
+- **Impact**: Affects all API calls and WebSocket connections
+
+#### **PROXY_CONTENT Configuration**
+- **TRUE**: All video streams proxied through backend
+  - ✅ Better CORS handling
+  - ✅ Unified authentication
+  - ⚠️ Higher bandwidth usage
+- **FALSE**: Direct streaming from external sources
+  - ✅ Lower server load
+  - ❌ Potential CORS issues
+  - ❌ Limited control over streams
+
+#### **WORKERS Configuration**
+- **Purpose**: Number of backend worker processes
+- **Impact**: Affects concurrent user capacity
+- **Recommendation**: 1 worker per 50-100 concurrent users
+
+### 🔍 Real-time Features
+
+#### **Live Channel Status**
+- **Purpose**: Monitor channel availability in real-time
+- **Technology**: Socket.IO with periodic backend checks
+- **Frequency**: Every 30 seconds for active channels
+
+#### **Event Detection**
+- **Purpose**: Automatically detect live sports and events
+- **Technology**: Backend parsing + Socket.IO broadcasting
+- **Sources**: Multiple IPTV guides and event APIs
+
+#### **Search Suggestions**
+- **Purpose**: Provide instant search results
+- **Technology**: WebSocket-based live search
+- **Performance**: Sub-100ms response times
+
+### 🚨 Error Handling
+
+#### **Connection Failures**
+```javascript
+// Frontend handles connection issues
+socket.on('connect_error', (error) => {
+  showErrorMessage('Connection failed. Retrying...');
+  // Automatic reconnection with exponential backoff
+});
+
+socket.on('disconnect', (reason) => {
+  if (reason === 'io server disconnect') {
+    // Server initiated disconnect
+    socket.connect();
+  }
+  // Client will auto-reconnect for other reasons
+});
+```
+
+#### **API Timeouts**
+```python
+# Backend implements timeout handling
+@app.get("/api/channels")
+async def get_channels():
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(external_api_url)
+            return response.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="External API timeout")
+```
+
+### 🔒 Security Considerations
+
+#### **CORS Configuration**
+- **Frontend Origin**: Automatically configured based on `API_URL`
+- **WebSocket CORS**: Socket.IO configured for cross-origin requests
+- **API Endpoints**: CORS headers added for browser compatibility
+
+#### **Rate Limiting**
+- **Purpose**: Prevent API abuse and ensure fair usage
+- **Implementation**: Per-IP rate limiting on API endpoints
+- **Limits**: 100 requests per minute per IP
+
+#### **Input Validation**
+- **Search Queries**: Sanitized to prevent injection attacks
+- **Channel IDs**: Validated against known channel list
+- **Stream URLs**: Validated before proxying
+
+### 📊 Performance Monitoring
+
+#### **Health Endpoints**
+```
+GET /health                    # Basic health check
+GET /health/detailed          # Detailed system status
+GET /metrics                  # Prometheus-style metrics
+```
+
+#### **WebSocket Connection Monitoring**
+```javascript
+// Frontend tracks connection quality
+socket.on('ping', () => {
+  const latency = Date.now() - socket.lastPingTime;
+  updateConnectionQuality(latency);
+});
+```
+
+#### **Backend Performance Metrics**
+- **Active Connections**: Number of WebSocket connections
+- **Request Rate**: HTTP requests per second
+- **Response Times**: Average API response times
+- **Error Rates**: Failed request percentages
+
+This architecture ensures scalable, real-time performance while maintaining separation of concerns between frontend presentation and backend data processing.
+
+---
+
 ## 🗺️ Site Map
 
 ### Pages Overview:
