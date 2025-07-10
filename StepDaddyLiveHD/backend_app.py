@@ -1,6 +1,6 @@
 """
 Backend-only entry point for StepDaddyLiveHD.
-This creates a simple backend app that handles WebSocket connections.
+This creates a backend app with proper Socket.IO support.
 """
 
 import os
@@ -16,14 +16,23 @@ sys.path.insert(0, str(project_root))
 os.environ["REFLEX_ENV"] = "prod"
 
 # Import required modules
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import socketio
 from StepDaddyLiveHD import backend
+
+# Create Socket.IO server
+sio = socketio.AsyncServer(
+    cors_allowed_origins="*",
+    async_mode="asgi",
+    engineio_logger=True,
+    logger=True
+)
 
 # Create the main FastAPI app
 app = FastAPI(
     title="StepDaddyLiveHD Backend",
-    description="IPTV proxy backend with WebSocket support",
+    description="IPTV proxy backend with Socket.IO support",
     version="1.0.0"
 )
 
@@ -40,79 +49,31 @@ app.add_middleware(
 for route in backend.fastapi_app.routes:
     app.router.routes.append(route)
 
-# Add WebSocket endpoints to handle /_event connections (match the frontend pattern)
-@app.websocket("/_event/")
-async def websocket_endpoint(websocket: WebSocket):
-    try:
-        await websocket.accept()
-        print(f"WebSocket connected: {websocket.client}")
-        
-        # Simple approach: just keep the connection alive
-        while True:
-            try:
-                # Wait for messages from the client with a timeout
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
-                print(f"Received WebSocket message: {data}")
-                
-                # Simply acknowledge any message
-                await websocket.send_text("ok")
-                print("Sent acknowledgment")
-                
-            except asyncio.TimeoutError:
-                # Send a keepalive ping
-                await websocket.ping()
-                print("Sent keepalive ping")
-                
-            except WebSocketDisconnect:
-                print(f"WebSocket disconnected: {websocket.client}")
-                break
-                
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-        try:
-            await websocket.close()
-        except:
-            pass
+# Socket.IO event handlers
+@sio.event
+async def connect(sid, environ):
+    print(f"Socket.IO client connected: {sid}")
 
-# Also handle the parameterized version
-@app.websocket("/_event/{path:path}")
-async def websocket_endpoint_with_params(websocket: WebSocket, path: str):
-    try:
-        await websocket.accept()
-        print(f"WebSocket connected with path {path}: {websocket.client}")
-        
-        # Simple approach: just keep the connection alive
-        while True:
-            try:
-                # Wait for messages from the client with a timeout
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
-                print(f"Received WebSocket message on {path}: {data}")
-                
-                # Simply acknowledge any message
-                await websocket.send_text("ok")
-                print(f"Sent acknowledgment on {path}")
-                
-            except asyncio.TimeoutError:
-                # Send a keepalive ping
-                await websocket.ping()
-                print(f"Sent keepalive ping on {path}")
-                
-            except WebSocketDisconnect:
-                print(f"WebSocket disconnected from {path}: {websocket.client}")
-                break
-                
-    except Exception as e:
-        print(f"WebSocket error on {path}: {e}")
-        try:
-            await websocket.close()
-        except:
-            pass
+@sio.event
+async def disconnect(sid):
+    print(f"Socket.IO client disconnected: {sid}")
+
+@sio.event
+async def message(sid, data):
+    print(f"Received message from {sid}: {data}")
+    await sio.emit('response', {'data': 'Message received'}, room=sid)
+
+# Mount the Socket.IO app to handle /_event
+socketio_app = socketio.ASGIApp(sio, app, socketio_path='/_event')
 
 # Add the lifespan task for channel updates
 @app.on_event("startup")
 async def startup_event():
     """Start the channel update task on startup."""
     asyncio.create_task(backend.update_channels())
+
+# Export the combined app
+app = socketio_app
 
 if __name__ == "__main__":
     import uvicorn
