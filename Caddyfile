@@ -17,11 +17,7 @@ header {
 	X-Process-Time {http.response.header.X-Process-Time}
 }
 
-# WebSocket-specific headers
-@websocket {
-	header Connection "upgrade"
-	header Upgrade "websocket"
-}
+
 
 # Handle CORS preflight requests
 @cors_preflight method OPTIONS
@@ -43,8 +39,6 @@ handle @websocket_routes {
 			dial_timeout 10s
 			response_header_timeout 60s
 		}
-		# Enable WebSocket support
-		websocket
 	}
 }
 
