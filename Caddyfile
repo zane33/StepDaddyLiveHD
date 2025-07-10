@@ -17,6 +17,12 @@ header {
 	X-Process-Time {http.response.header.X-Process-Time}
 }
 
+# WebSocket-specific headers
+@websocket {
+	header Connection "upgrade"
+	header Upgrade "websocket"
+}
+
 # Handle CORS preflight requests
 @cors_preflight method OPTIONS
 handle @cors_preflight {
@@ -29,8 +35,21 @@ handle @cors_preflight {
 	respond 204
 }
 
-# Backend routes
-@backend_routes path /_event/* /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
+# WebSocket routes (handle separately for better WebSocket support)
+@websocket_routes path /_event/*
+handle @websocket_routes {
+	reverse_proxy localhost:{$BACKEND_PORT} {
+		transport http {
+			dial_timeout 10s
+			response_header_timeout 60s
+		}
+		# Enable WebSocket support
+		websocket
+	}
+}
+
+# Other backend routes
+@backend_routes path /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
 	reverse_proxy localhost:{$BACKEND_PORT} {
 		transport http {

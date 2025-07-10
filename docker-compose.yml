@@ -7,6 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${PORT:-3232}:${PORT:-3232}"
+      - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
     environment:
       - PORT=${PORT:-3232}
       - API_URL=${API_URL:-http://localhost:3232}
