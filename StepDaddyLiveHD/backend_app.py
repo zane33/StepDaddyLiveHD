@@ -47,31 +47,21 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         print(f"WebSocket connected: {websocket.client}")
         
-        # Send initial Engine.IO handshake response
-        # Format: message_type + message_data
-        # 0 = open message with session info
-        handshake_response = '0{"sid":"websocket_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
-        await websocket.send_text(handshake_response)
-        print(f"Sent handshake: {handshake_response}")
-        
-        # Keep the connection alive and handle Engine.IO-style messages
+        # Simple approach: just keep the connection alive
         while True:
             try:
-                # Wait for messages from the client
-                data = await websocket.receive_text()
+                # Wait for messages from the client with a timeout
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 print(f"Received WebSocket message: {data}")
                 
-                # Handle different Engine.IO message types
-                if data.startswith("2"):  # ping message
-                    await websocket.send_text("3")  # pong response
-                    print("Sent pong response")
-                elif data.startswith("40"):  # Socket.IO connect
-                    await websocket.send_text("40")  # Socket.IO connect ack
-                    print("Sent Socket.IO connect ack")
-                else:
-                    # Echo other messages
-                    await websocket.send_text(data)
-                    print(f"Echoed message: {data}")
+                # Simply acknowledge any message
+                await websocket.send_text("ok")
+                print("Sent acknowledgment")
+                
+            except asyncio.TimeoutError:
+                # Send a keepalive ping
+                await websocket.ping()
+                print("Sent keepalive ping")
                 
             except WebSocketDisconnect:
                 print(f"WebSocket disconnected: {websocket.client}")
@@ -91,29 +81,21 @@ async def websocket_endpoint_with_params(websocket: WebSocket, path: str):
         await websocket.accept()
         print(f"WebSocket connected with path {path}: {websocket.client}")
         
-        # Send initial Engine.IO handshake response
-        handshake_response = '0{"sid":"websocket_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
-        await websocket.send_text(handshake_response)
-        print(f"Sent handshake on {path}: {handshake_response}")
-        
-        # Keep the connection alive
+        # Simple approach: just keep the connection alive
         while True:
             try:
-                # Wait for messages from the client
-                data = await websocket.receive_text()
+                # Wait for messages from the client with a timeout
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 print(f"Received WebSocket message on {path}: {data}")
                 
-                # Handle different Engine.IO message types
-                if data.startswith("2"):  # ping message
-                    await websocket.send_text("3")  # pong response
-                    print(f"Sent pong response on {path}")
-                elif data.startswith("40"):  # Socket.IO connect
-                    await websocket.send_text("40")  # Socket.IO connect ack
-                    print(f"Sent Socket.IO connect ack on {path}")
-                else:
-                    # Echo other messages
-                    await websocket.send_text(data)
-                    print(f"Echoed message on {path}: {data}")
+                # Simply acknowledge any message
+                await websocket.send_text("ok")
+                print(f"Sent acknowledgment on {path}")
+                
+            except asyncio.TimeoutError:
+                # Send a keepalive ping
+                await websocket.ping()
+                print(f"Sent keepalive ping on {path}")
                 
             except WebSocketDisconnect:
                 print(f"WebSocket disconnected from {path}: {websocket.client}")
