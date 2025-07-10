@@ -2,17 +2,17 @@
 
 ## Common Issues and Solutions
 
-### 1. Connection Refused Error (Port 8000)
+### 1. Connection Refused Error (Port 8005)
 
-**Error**: `dial tcp 127.0.0.1:8000: connect: connection refused`
+**Error**: `dial tcp 127.0.0.1:8005: connect: connection refused`
 
-**Cause**: The backend is not running on port 8000 as expected by Caddy.
+**Cause**: The backend is not running on port 8005 as expected by Caddy.
 
 **Solutions**:
 - Check if the container is running: `docker ps`
 - Check container logs: `docker logs <container_name>`
 - Verify the backend started properly by looking for "Backend initialized" in logs
-- Test the backend directly: `curl http://localhost:8000/ping`
+- Test the backend directly: `curl http://localhost:8005/ping`
 
 ### 2. Curl Error in Channel Loading
 
@@ -47,7 +47,7 @@
 - Resource limitations
 
 **Solutions**:
-- Increase `WORKERS` environment variable (default: 4, recommended: 4-8)
+- Increase `WORKERS` environment variable (default: 6, recommended: 4-8)
 - Monitor system resources (CPU, memory)
 - Check cache hit rates using `/health` endpoint
 - Use the performance monitoring script: `python monitor_performance.py http://localhost:${PORT:-3232}`
@@ -56,140 +56,36 @@
 
 ### Environment Variables for Performance
 
-- `WORKERS`: Number of worker processes (default: 4, recommended: 4-8 for most deployments)
-- `PROXY_CONTENT`: Whether to proxy content (default: TRUE)
-- `SOCKS5`: SOCKS5 proxy configuration (optional)
-
-### Caching
-
-The application now includes several caching mechanisms:
-- **Stream Cache**: Caches M3U8 playlists for 5 minutes
-- **Logo Cache**: Caches channel logos for 24 hours
-- **Channel Cache**: Caches channel list with LRU eviction
-
-### Connection Pooling
-
-- HTTP client uses connection pooling with up to 100 connections
-- Keep-alive connections for better performance
-- Automatic retry logic for failed requests
-
-### Rate Limiting
-
-- Caddy includes rate limiting (100 requests per 10 seconds)
-- Backend includes semaphore limiting (10 concurrent stream requests)
-
-## Debugging Steps
-
-### 1. Check Container Status
+To check current environment variables in a running container:
 ```bash
-docker ps -a
-docker logs <container_name>
+docker exec <container_name> env | grep -E "(PORT|API_URL|DADDYLIVE_URI|PROXY_CONTENT|SOCKS5|WORKERS|BACKEND_PORT)"
 ```
 
-### 2. Test Backend Directly
-```bash
-# If running locally
-python test_backend.py
+### Core Variables
 
-# If running in container
-docker exec <container_name> python test_backend.py
-```
+- `PORT`: The frontend port (default: 3232)
+- `BACKEND_PORT`: The backend service port (default: 8005)
+- `API_URL`: The public URL for accessing the service
+- `DADDYLIVE_URI`: The daddylive service endpoint
+- `PROXY_CONTENT`: Whether to proxy video content
+- `SOCKS5`: Optional SOCKS5 proxy configuration
+- `WORKERS`: Number of backend worker processes
 
-### 3. Check Service Health
-```bash
-# Test Caddy
-curl http://localhost:${PORT:-3232}/ping
-
-# Test backend directly
-curl http://localhost:8000/ping
-
-# Check detailed health status
-curl http://localhost:${PORT:-3232}/health
-```
-
-### 4. Check Environment Variables
-```bash
-docker exec <container_name> env | grep -E "(PORT|API_URL|BACKEND_HOST_URI|DADDYLIVE_URI|PROXY_CONTENT|SOCKS5|WORKERS)"
-```
-
-### 5. Performance Monitoring
-```bash
-# Run performance tests
-python monitor_performance.py http://localhost:${PORT:-3232}
-
-# Check system resources
-docker stats <container_name>
-```
-
-## Environment Variables
-
-The application supports the following environment variables:
-
-- `PORT`: The port Caddy listens on (default: 3232)
-- `API_URL`: The API URL for the frontend (optional)
-- `BACKEND_HOST_URI`: The backend host URI for custom backend configuration (optional)
-- `DADDYLIVE_URI`: The daddylive endpoint URI (default: https://thedaddy.click)
-- `PROXY_CONTENT`: Whether to proxy content (default: TRUE)
-- `SOCKS5`: SOCKS5 proxy configuration (optional)
-- `WORKERS`: Number of worker processes for better performance (default: 4)
-
-### BACKEND_HOST_URI Usage
-
-The `BACKEND_HOST_URI` environment variable allows you to configure a custom backend host URI. This is useful when:
-
-- The backend needs to be accessible from a different host than the frontend
-- You're running the backend on a different port or domain
-- You need to configure the backend for external access
-
-Example usage:
-```bash
-# Set in .env file
-BACKEND_HOST_URI=http://backend.example.com:8000
-
-# Or when running docker-compose
-BACKEND_HOST_URI=http://backend.example.com:8000 docker-compose up
-```
-
-### WORKERS Configuration
-
-The `WORKERS` environment variable controls the number of worker processes for better multi-connection handling:
+### Example Usage
 
 ```bash
-# For development (single worker)
-WORKERS=1
-
-# For production (recommended)
-WORKERS=4
-
-# For high-traffic deployments
-WORKERS=8
+PORT=3232 BACKEND_PORT=8005 API_URL=http://192.168.1.100:3232 docker-compose up
 ```
 
-## Log Files
+### WebSocket Connections
 
-The application logs important events including:
-- Backend initialization
-- Channel loading attempts
-- Network errors
-- Service startup status
-- Cache hit/miss statistics
-- Performance metrics
+The application uses WebSocket for real-time updates. The connection flow is:
+1. Frontend connects to `ws://[API_URL]/_event`
+2. Caddy proxies the connection to the backend on port 8005
+3. Backend handles the WebSocket connection
 
-Check logs for specific error messages and timestamps to identify issues.
-
-## Performance Tuning
-
-### For High-Traffic Deployments
-
-1. **Increase Workers**: Set `WORKERS=8` or higher
-2. **Monitor Resources**: Use `docker stats` to monitor CPU and memory usage
-3. **Cache Optimization**: Monitor cache hit rates via `/health` endpoint
-4. **Network Optimization**: Consider using a CDN for static content
-5. **Load Balancing**: Use multiple container instances behind a load balancer
-
-### For Low-Resource Environments
-
-1. **Reduce Workers**: Set `WORKERS=2` or `WORKERS=1`
-2. **Disable Content Proxy**: Set `PROXY_CONTENT=FALSE`
-3. **Monitor Memory**: Watch for memory leaks or high usage
-4. **Optimize Caching**: Reduce cache TTL if memory is limited 
+If you're having WebSocket connection issues:
+1. Check that both ports (3232 and 8005) are exposed
+2. Verify Caddy is properly proxying WebSocket connections
+3. Check browser console for connection errors
+4. Ensure `API_URL` is correctly set to your server's address 
