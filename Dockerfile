@@ -41,7 +41,7 @@ RUN chmod +x /app/start.sh
 ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
 # Download other npm dependencies and compile frontend
 RUN mkdir -p /srv && \
-    (REFLEX_API_URL=${API_URL:-http://localhost:3232} reflex export --loglevel debug --frontend-only --no-zip && mv .web/build/client/* /srv/ && rm -rf .web) || \
+    (REFLEX_API_URL=${API_URL:-http://localhost:${PORT:-3232}} reflex export --loglevel debug --frontend-only --no-zip && mv .web/build/client/* /srv/ && rm -rf .web) || \
     (echo "Reflex export failed, creating minimal frontend" && \
      mkdir -p /srv && \
      echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p></body></html>" > /srv/index.html)
@@ -54,7 +54,7 @@ FROM python:3.13-slim
 RUN apt-get update -y && apt-get install -y caddy redis-server && rm -rf /var/lib/apt/lists/*
 
 ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
-ENV PATH="/app/.venv/bin:$PATH" PORT=${PORT:-3232} REFLEX_API_URL=${API_URL:-http://localhost:3232} BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} REDIS_URL=redis://localhost PYTHONUNBUFFERED=1 PROXY_CONTENT=${PROXY_CONTENT:-TRUE} SOCKS5=${SOCKS5:-""} WORKERS=${WORKERS:-4}
+ENV PATH="/app/.venv/bin:$PATH" PORT=${PORT:-3232} REFLEX_API_URL=${API_URL:-http://localhost:${PORT:-3232}} BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} REDIS_URL=redis://localhost PYTHONUNBUFFERED=1 PROXY_CONTENT=${PROXY_CONTENT:-TRUE} SOCKS5=${SOCKS5:-""} WORKERS=${WORKERS:-4}
 
 WORKDIR /app
 COPY --from=builder /app /app

@@ -50,7 +50,7 @@
 - Increase `WORKERS` environment variable (default: 4, recommended: 4-8)
 - Monitor system resources (CPU, memory)
 - Check cache hit rates using `/health` endpoint
-- Use the performance monitoring script: `python monitor_performance.py http://localhost:3000`
+- Use the performance monitoring script: `python monitor_performance.py http://localhost:${PORT:-3232}`
 
 ## Performance Optimizations
 
@@ -98,13 +98,13 @@ docker exec <container_name> python test_backend.py
 ### 3. Check Service Health
 ```bash
 # Test Caddy
-curl http://localhost:3000/ping
+curl http://localhost:${PORT:-3232}/ping
 
 # Test backend directly
 curl http://localhost:8000/ping
 
 # Check detailed health status
-curl http://localhost:3000/health
+curl http://localhost:${PORT:-3232}/health
 ```
 
 ### 4. Check Environment Variables
@@ -115,7 +115,7 @@ docker exec <container_name> env | grep -E "(PORT|API_URL|BACKEND_HOST_URI|DADDY
 ### 5. Performance Monitoring
 ```bash
 # Run performance tests
-python monitor_performance.py http://localhost:3000
+python monitor_performance.py http://localhost:${PORT:-3232}
 
 # Check system resources
 docker stats <container_name>
@@ -125,7 +125,7 @@ docker stats <container_name>
 
 The application supports the following environment variables:
 
-- `PORT`: The port Caddy listens on (default: 3000)
+- `PORT`: The port Caddy listens on (default: 3232)
 - `API_URL`: The API URL for the frontend (optional)
 - `BACKEND_HOST_URI`: The backend host URI for custom backend configuration (optional)
 - `DADDYLIVE_URI`: The daddylive endpoint URI (default: https://thedaddy.click)

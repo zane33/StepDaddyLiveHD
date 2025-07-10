@@ -65,7 +65,7 @@ services:
       - "3232:3232"
     environment:
       - PORT=3232
-      - API_URL=${API_URL:-http://localhost:3232}
+      - API_URL=${API_URL:-http://localhost:${PORT:-3232}}
       - BACKEND_HOST_URI=${BACKEND_HOST_URI:-}
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}

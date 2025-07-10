@@ -4,11 +4,12 @@ Simple test script to verify backend functionality
 """
 import asyncio
 import httpx
+import os
 import sys
 
 async def test_backend():
     """Test the backend endpoints"""
-    base_url = "http://localhost:8000"
+    base_url = os.environ.get("BACKEND_HOST_URI", "http://localhost:8000")
     
     print("Testing backend endpoints...")
     
