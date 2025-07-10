@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  step-daddy-live-hd:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - PROXY_CONTENT=TRUE
+      - WORKERS=4
+    restart: unless-stopped
+    env_file:
+      - .env 

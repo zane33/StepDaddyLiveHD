@@ -1,26 +1,20 @@
+version: '3.8'
+
 services:
   step-daddy-live-hd:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        PORT: ${PORT}
-        API_URL: ${API_URL}
-        BACKEND_HOST_URI: ${BACKEND_HOST_URI}
-        DADDYLIVE_URI: ${DADDYLIVE_URI}
-        PROXY_CONTENT: ${PROXY_CONTENT}
-        SOCKS5: ${SOCKS5}
-        WORKERS: ${WORKERS}
-    environment:
-      - PORT=${PORT}
-      - API_URL=${API_URL}
-      - BACKEND_HOST_URI=${BACKEND_HOST_URI}
-      - DADDYLIVE_URI=${DADDYLIVE_URI}
-      - PROXY_CONTENT=${PROXY_CONTENT}
-      - SOCKS5=${SOCKS5}
-      - WORKERS=${WORKERS}
     ports:
-      - "${PORT}:${PORT}"
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      - PORT=${PORT:-3000}
+      - API_URL=${API_URL:-}
+      - BACKEND_HOST_URI=${BACKEND_HOST_URI:-}
+      - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
+      - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
+      - SOCKS5=${SOCKS5:-}
+      - WORKERS=${WORKERS:-4}
     restart: unless-stopped
     env_file:
       - .env
