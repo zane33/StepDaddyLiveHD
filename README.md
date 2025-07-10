@@ -64,15 +64,155 @@ docker run -p 3000:3000 step-daddy-live-hd
 
 ### Environment Variables
 
-- **PORT**: Set a custom port for the server (default: 3000).
-- **API_URL**: Set the domain or IP where the server is reachable.
-- **BACKEND_HOST_URI**: Set the backend host URI for custom backend configuration (optional).
-- **DADDYLIVE_URI**: Set the daddylive endpoint URI (default: https://thedaddy.click).
-- **WORKERS**: Set the number of worker processes for better performance (default: 4, recommended: 4-8).
-- **SOCKS5**: Proxy DLHD traffic through a SOCKS5 server if needed.
-- **PROXY_CONTENT**: Proxy video content itself through your server (optional, default: TRUE).
+StepDaddyLiveHD uses several environment variables to configure its behavior. Here's a detailed explanation of each:
 
-Edit the `.env` for docker compose.
+#### **🌐 Network & Server Configuration**
+
+- **`PORT`** (default: `3000`)
+  - **Purpose**: Sets the port number that Caddy (the reverse proxy) listens on
+  - **Usage**: Change this if port 3000 is already in use on your system
+  - **Example**: `PORT=8080` to run on port 8080
+
+- **`API_URL`** (optional)
+  - **Purpose**: Sets the public URL where your server is accessible
+  - **When Required**: 
+    - For LAN access: Set to your local IP (e.g., `http://192.168.1.100:3000`)
+    - For internet access: Set to your domain (e.g., `https://yourdomain.com`)
+  - **Impact**: Affects how URLs are generated in playlists and web interface
+  - **Example**: `API_URL=https://iptv.yourdomain.com`
+
+- **`BACKEND_HOST_URI`** (optional)
+  - **Purpose**: Configures a custom backend host URI for advanced setups
+  - **Use Cases**:
+    - Load balancing with multiple backend instances
+    - Custom backend domain/subdomain
+    - Reverse proxy configurations
+  - **Example**: `BACKEND_HOST_URI=http://backend.yourdomain.com:8000`
+
+#### **📺 Content & Streaming Configuration**
+
+- **`DADDYLIVE_URI`** (default: `https://thedaddy.click`)
+  - **Purpose**: Sets the endpoint URI for the daddylive service
+  - **Use Cases**:
+    - Point to alternative daddylive servers
+    - Use custom daddylive instances
+    - Backup/mirror servers
+  - **Example**: `DADDYLIVE_URI=https://custom-daddylive.example.com`
+
+- **`PROXY_CONTENT`** (default: `TRUE`)
+  - **Purpose**: Controls whether video content is proxied through your server
+  - **When `TRUE`** (recommended for web usage):
+    - ✅ Web players work without CORS issues
+    - ✅ Original video URLs are hidden from clients
+    - ✅ Better privacy and control
+    - ⚠️ Higher server bandwidth usage
+  - **When `FALSE`** (for external players only):
+    - ✅ Lower server load and bandwidth usage
+    - ❌ Web players may not work due to CORS
+    - ❌ Original URLs are exposed to clients
+  - **Example**: `PROXY_CONTENT=FALSE` for VLC/MPV only usage
+
+#### **🚀 Performance Configuration**
+
+- **`WORKERS`** (default: `4`)
+  - **Purpose**: Sets the number of worker processes for handling concurrent requests
+  - **Recommendations**:
+    - **Development**: `WORKERS=1`
+    - **Production**: `WORKERS=4` (default)
+    - **High Traffic**: `WORKERS=8` or higher
+  - **Impact**: More workers = better concurrent handling but higher resource usage
+  - **Example**: `WORKERS=8` for high-traffic deployments
+
+#### **🔒 Network & Security Configuration**
+
+- **`SOCKS5`** (optional)
+  - **Purpose**: Routes all daddylive traffic through a SOCKS5 proxy
+  - **Use Cases**:
+    - Bypass regional restrictions
+    - Enhanced privacy
+    - Network routing requirements
+  - **Format**: `host:port` or `user:password@host:port`
+  - **Example**: `SOCKS5=127.0.0.1:1080` or `SOCKS5=user:pass@proxy.example.com:1080`
+
+### Configuration Examples
+
+#### **🏠 Basic Home Setup**
+```bash
+# Simple local setup
+PORT=3000
+API_URL=http://192.168.1.100:3000
+PROXY_CONTENT=TRUE
+WORKERS=4
+```
+
+#### **🌍 Internet-Facing Server**
+```bash
+# Production setup with domain
+PORT=3000
+API_URL=https://iptv.yourdomain.com
+PROXY_CONTENT=TRUE
+WORKERS=6
+```
+
+#### **🎯 High-Performance Deployment**
+```bash
+# Optimized for high traffic
+PORT=3000
+API_URL=https://iptv.yourdomain.com
+BACKEND_HOST_URI=http://backend.yourdomain.com:8000
+PROXY_CONTENT=TRUE
+WORKERS=8
+```
+
+#### **🔒 Privacy-Focused Setup**
+```bash
+# With SOCKS5 proxy for enhanced privacy
+PORT=3000
+API_URL=https://iptv.yourdomain.com
+PROXY_CONTENT=TRUE
+WORKERS=4
+SOCKS5=user:password@proxy.example.com:1080
+```
+
+#### **📱 External Players Only**
+```bash
+# Optimized for VLC/MPV usage (lower server load)
+PORT=3000
+API_URL=https://iptv.yourdomain.com
+PROXY_CONTENT=FALSE
+WORKERS=2
+```
+
+### 🔧 Common Configuration Issues
+
+#### **Web Player Not Working**
+- **Problem**: CORS errors or video not loading
+- **Solution**: Ensure `PROXY_CONTENT=TRUE` is set
+- **Alternative**: Use external players like VLC/MPV
+
+#### **Can't Access from Other Devices**
+- **Problem**: Only accessible from localhost
+- **Solution**: Set `API_URL` to your local IP address
+- **Example**: `API_URL=http://192.168.1.100:3000`
+
+#### **High Server Load**
+- **Problem**: Server becomes slow with multiple users
+- **Solutions**:
+  - Increase `WORKERS` (try 6-8)
+  - Set `PROXY_CONTENT=FALSE` if using external players only
+  - Monitor system resources
+
+#### **Playlist URLs Not Working**
+- **Problem**: Playlist links point to wrong address
+- **Solution**: Ensure `API_URL` is set correctly
+- **Check**: URLs in `/playlist.m3u8` should match your server
+
+#### **SOCKS5 Proxy Issues**
+- **Problem**: Connection failures with proxy
+- **Solutions**:
+  - Verify proxy server is running
+  - Check credentials format: `user:password@host:port`
+  - Test proxy connectivity separately
 
 ### Performance Features
 
@@ -113,8 +253,40 @@ PROXY_CONTENT=TRUE
 
 ### Example Docker Command
 ```bash
-docker build --build-arg PROXY_CONTENT=FALSE --build-arg API_URL=https://example.com --build-arg BACKEND_HOST_URI=http://backend.example.com:8000 --build-arg DADDYLIVE_URI=https://custom-daddylive.example.com --build-arg WORKERS=8 --build-arg SOCKS5=user:password@proxy.example.com:1080 -t step-daddy-live-hd .
-docker run -e PROXY_CONTENT=FALSE -e API_URL=https://example.com -e BACKEND_HOST_URI=http://backend.example.com:8000 -e DADDYLIVE_URI=https://custom-daddylive.example.com -e WORKERS=8 -e SOCKS5=user:password@proxy.example.com:1080 -p 3000:3000 step-daddy-live-hd
+# Basic setup
+docker build -t step-daddy-live-hd .
+docker run -p 3000:3000 step-daddy-live-hd
+
+# Advanced setup with all options
+docker build \
+  --build-arg PORT=3000 \
+  --build-arg API_URL=https://iptv.yourdomain.com \
+  --build-arg BACKEND_HOST_URI=http://backend.yourdomain.com:8000 \
+  --build-arg DADDYLIVE_URI=https://thedaddy.click \
+  --build-arg PROXY_CONTENT=TRUE \
+  --build-arg WORKERS=8 \
+  --build-arg SOCKS5=user:password@proxy.example.com:1080 \
+  -t step-daddy-live-hd .
+
+docker run \
+  -e PORT=3000 \
+  -e API_URL=https://iptv.yourdomain.com \
+  -e BACKEND_HOST_URI=http://backend.yourdomain.com:8000 \
+  -e DADDYLIVE_URI=https://thedaddy.click \
+  -e PROXY_CONTENT=TRUE \
+  -e WORKERS=8 \
+  -e SOCKS5=user:password@proxy.example.com:1080 \
+  -p 3000:3000 \
+  step-daddy-live-hd
+
+# Minimal setup for external players only
+docker run \
+  -e PORT=3000 \
+  -e API_URL=http://192.168.1.100:3000 \
+  -e PROXY_CONTENT=FALSE \
+  -e WORKERS=2 \
+  -p 3000:3000 \
+  step-daddy-live-hd
 ```
 
 ---
