@@ -22,21 +22,16 @@ class Channel(rx.Base):
 class StepDaddy:
     def __init__(self):
         socks5 = config.socks5
-        if socks5 != "":
-            self._session = AsyncSession(
-                proxy="socks5://" + socks5,
-                timeout=30,  # Add timeout to prevent hanging requests
-                impersonate="chrome110",  # Better browser impersonation
-                max_redirects=5,  # Limit redirects
-                max_retries=3,  # Add retry logic
-            )
-        else:
-            self._session = AsyncSession(
-                timeout=30,  # Add timeout to prevent hanging requests
-                impersonate="chrome110",  # Better browser impersonation
-                max_redirects=5,  # Limit redirects
-                max_retries=3,  # Add retry logic
-            )
+        session_config = {
+            "timeout": 30,  # Add timeout to prevent hanging requests
+            "impersonate": "chrome110",  # Better browser impersonation
+            "max_redirects": 5,  # Limit redirects
+        }
+        
+        if socks5:
+            session_config["proxy"] = f"socks5://{socks5}"
+        
+        self._session = AsyncSession(**session_config)
         self._base_url = config.daddylive_uri
         self.channels = []
         self._load_lock = asyncio.Lock()  # Prevent concurrent channel loading
