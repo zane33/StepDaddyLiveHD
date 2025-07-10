@@ -472,57 +472,60 @@ docker run \
 
 ## 🔄 Frontend-Backend Architecture
 
-StepDaddyLiveHD uses a modern architecture that separates the frontend and backend while maintaining real-time communication capabilities. Here's how the components interact:
+StepDaddyLiveHD uses a modern architecture built with **Reflex** (Python web framework) that provides seamless real-time communication between frontend and backend. Here's how the components interact:
 
 ### 🏗️ Architecture Overview
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Caddy Proxy   │    │   Backend       │
-│   (React/JS)    │◄──►│   (Port 3232)   │◄──►│   (FastAPI)     │
+│   (Reflex App)  │◄──►│   (Port 3232)   │◄──►│   (FastAPI)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ Socket.IO       │    │ Static Files    │    │ IPTV Data       │
-│ WebSocket       │    │ & Routing       │    │ Processing      │
-│ (/_event)       │    │                 │    │                 │
+│ Reflex State    │    │ Static Files    │    │ IPTV Data       │
+│ Management      │    │ & Routing       │    │ Processing      │
+│ (Built-in WS)   │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### 🌐 Frontend Components
 
-The frontend is built with **React** and **Reflex**, providing a responsive web interface for browsing and streaming TV channels.
+The frontend is built entirely with **Reflex**, a Python web framework that compiles to React, providing a responsive web interface for browsing and streaming TV channels.
 
 #### **Key Frontend Features:**
 - **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
-- **🔍 Real-time Search**: Live filtering of channels and events
+- **🔍 Real-time Search**: Live filtering of channels and events with instant updates
 - **📺 Video Player**: Built-in web player with adaptive streaming
-- **📊 Real-time Updates**: Live channel status and event information
-- **🎯 Event Detection**: Automatic detection of live sports and events
+- **📊 Real-time Updates**: Live channel status and connection monitoring
+- **🎯 Auto-refresh**: Automatic periodic updates with manual refresh controls
+- **🔄 State Management**: Reactive state updates without page reloads
 
 #### **Frontend Technologies:**
-- **React**: Component-based UI framework
-- **Reflex**: Python-to-React transpiler
-- **Socket.IO Client**: Real-time WebSocket communication
+- **Reflex**: Full-stack Python web framework
+- **Python**: All frontend logic written in Python
+- **Reactive State**: Built-in state management system
+- **Real-time Communication**: Native WebSocket support
 - **Adaptive Video Player**: HLS/DASH streaming support
-- **Responsive CSS**: Mobile-first design approach
+- **Responsive Design**: Mobile-first approach with CSS-in-Python
 
 ### 🔧 Backend Components
 
-The backend is built with **FastAPI** and provides both REST API endpoints and real-time WebSocket communication.
+The backend is built with **FastAPI** and provides REST API endpoints for data processing and content delivery. Real-time communication is handled by Reflex's built-in WebSocket system.
 
 #### **Key Backend Features:**
 - **🚀 FastAPI**: High-performance async web framework
-- **🔄 Real-time Communication**: Socket.IO server for live updates
-- **📊 Data Processing**: Channel parsing and event detection
+- **📊 Data Processing**: Channel parsing and IPTV stream handling
 - **🎭 Content Proxying**: Optional video stream proxying
 - **🔒 CORS Handling**: Cross-origin request management
+- **⚡ Caching**: Intelligent caching for improved performance
+- **🔄 Background Tasks**: Periodic channel updates and monitoring
 
 #### **Backend Technologies:**
-- **FastAPI**: Modern Python web framework
-- **Socket.IO**: Real-time bidirectional communication
+- **FastAPI**: Modern Python web framework for API endpoints
+- **Reflex Integration**: Seamless integration with Reflex state system
 - **Uvicorn**: ASGI server with multiple workers
 - **Aiohttp**: Async HTTP client for external requests
 - **Python 3.13**: Latest Python with async/await support
@@ -533,52 +536,54 @@ The backend is built with **FastAPI** and provides both REST API endpoints and r
 The backend exposes several REST endpoints for standard operations:
 
 ```
-GET  /                          # Frontend static files
-GET  /api/channels             # Get all available channels
-GET  /api/events               # Get live events and sports
-GET  /api/search?q=<query>     # Search channels and events
+GET  /                          # Frontend static files (served by Caddy)
+GET  /stream/<channel_id>       # Stream video content
 GET  /playlist.m3u8            # Download M3U8 playlist
-GET  /stream/<channel_id>      # Stream video content
+GET  /logo/<logo_id>           # Channel logos and images
+GET  /key/<url>/<host>         # Streaming keys
+GET  /content/<path>           # Proxied content
 GET  /health                   # Health check endpoint
+GET  /ping                     # Simple ping endpoint
 ```
 
-#### **2. WebSocket/Socket.IO Communication**
-Real-time features use Socket.IO over WebSocket connection at `/_event`:
+#### **2. Reflex State Management**
+Real-time features use Reflex's built-in state management system:
 
-**Frontend → Backend Events:**
-```javascript
-// Connect to Socket.IO server
-const socket = io('ws://localhost:3232/_event');
-
-// Join channel updates room
-socket.emit('join_channel_updates');
-
-// Request live event updates
-socket.emit('get_live_events');
-
-// Search for channels
-socket.emit('search_channels', { query: 'sports' });
+**Python State Updates:**
+```python
+class State(rx.State):
+    channels: List[Channel] = []
+    search_query: str = ""
+    is_loading: bool = False
+    connection_status: str = "connected"
+    
+    async def load_channels(self):
+        """Load channels with real-time updates"""
+        self.is_loading = True
+        self.channels = backend.get_channels()
+        self.is_loading = False
+    
+    async def search_channels(self, query: str):
+        """Real-time search filtering"""
+        self.search_query = query
+    
+    async def refresh_channels(self):
+        """Manual refresh with status updates"""
+        await self.load_channels()
 ```
 
-**Backend → Frontend Events:**
-```javascript
-// Receive channel status updates
-socket.on('channel_status', (data) => {
-  // Update channel availability in real-time
-  updateChannelStatus(data.channel_id, data.status);
-});
+**Reactive Frontend Updates:**
+```python
+# Real-time filtered results
+@rx.var
+def filtered_channels(self) -> List[Channel]:
+    if not self.search_query:
+        return self.channels
+    return [ch for ch in self.channels 
+            if self.search_query.lower() in ch.name.lower()]
 
-// Receive live event notifications
-socket.on('live_event', (data) => {
-  // Show new live events as they're detected
-  showLiveEventNotification(data);
-});
-
-// Receive search results
-socket.on('search_results', (data) => {
-  // Update search results in real-time
-  updateSearchResults(data.results);
-});
+# Automatic UI updates when state changes
+rx.foreach(State.filtered_channels, channel_card)
 ```
 
 ### 🔄 Data Flow Examples
@@ -586,40 +591,40 @@ socket.on('search_results', (data) => {
 #### **1. Channel Browsing Flow**
 ```
 1. User opens homepage
-   Frontend → GET /api/channels → Backend
+   Reflex Frontend → State.on_load() → Backend
    
 2. Backend fetches channel data
    Backend → External IPTV API → Channel List
    
-3. Frontend receives channel list
-   Backend → JSON Response → Frontend
+3. State updates automatically
+   Backend → State.channels → Reactive UI Update
    
 4. Frontend renders channel grid
-   Frontend → React Components → User Interface
+   Reflex State → rx.foreach() → Automatic UI Rendering
 ```
 
-#### **2. Real-time Event Detection**
+#### **2. Real-time Search Flow**
 ```
-1. Backend monitors external sources
-   Backend → Periodic API Calls → Event Sources
+1. User types in search box
+   Input Field → State.search_channels() → State Update
    
-2. New live event detected
-   Backend → Event Processing → Live Event Data
+2. State variable updates
+   State.search_query → Reactive @rx.var → Filtered Results
    
-3. Broadcast to all connected clients
-   Backend → Socket.IO Emit → All Frontend Clients
+3. UI updates automatically
+   State.filtered_channels → rx.foreach() → Live UI Update
    
-4. Frontend shows live notification
-   Frontend → Event Handler → UI Notification
+4. No page reload needed
+   Reflex State Management → Instant Visual Feedback
 ```
 
 #### **3. Video Streaming Flow**
 ```
 With PROXY_CONTENT=TRUE:
-User → Frontend → Backend → External Stream → Backend → User
+User → Reflex Frontend → Backend → External Stream → Backend → User
 
 With PROXY_CONTENT=FALSE:
-User → Frontend → Backend → Stream URL → Frontend → External Stream
+User → Reflex Frontend → Backend → Stream URL → Frontend → External Stream
 ```
 
 ### 🛠️ Configuration Impact on Communication
@@ -648,57 +653,58 @@ User → Frontend → Backend → Stream URL → Frontend → External Stream
 ### 🔍 Real-time Features
 
 #### **Live Channel Status**
-- **Purpose**: Monitor channel availability in real-time
-- **Technology**: Socket.IO with periodic backend checks
-- **Frequency**: Every 30 seconds for active channels
+- **Purpose**: Monitor channel availability and connection status
+- **Technology**: Reflex state management with periodic backend updates
+- **Frequency**: Every 5 minutes with manual refresh option
 
-#### **Event Detection**
-- **Purpose**: Automatically detect live sports and events
-- **Technology**: Backend parsing + Socket.IO broadcasting
-- **Sources**: Multiple IPTV guides and event APIs
+#### **Real-time Search**
+- **Purpose**: Instant search filtering without page reloads
+- **Technology**: Reactive state variables with @rx.var decorators
+- **Performance**: Immediate UI updates on keystroke
 
-#### **Search Suggestions**
-- **Purpose**: Provide instant search results
-- **Technology**: WebSocket-based live search
-- **Performance**: Sub-100ms response times
+#### **Auto-refresh System**
+- **Purpose**: Keep channel data fresh automatically
+- **Technology**: Background asyncio tasks with state updates
+- **Control**: User can toggle auto-refresh on/off
 
 ### 🚨 Error Handling
 
 #### **Connection Failures**
-```javascript
-// Frontend handles connection issues
-socket.on('connect_error', (error) => {
-  showErrorMessage('Connection failed. Retrying...');
-  // Automatic reconnection with exponential backoff
-});
-
-socket.on('disconnect', (reason) => {
-  if (reason === 'io server disconnect') {
-    // Server initiated disconnect
-    socket.connect();
-  }
-  // Client will auto-reconnect for other reasons
-});
+```python
+# Reflex handles connection issues through state management
+async def load_channels(self):
+    self.is_loading = True
+    self.connection_status = "connecting"
+    
+    try:
+        self.channels = backend.get_channels()
+        self.connection_status = "connected"
+    except Exception as e:
+        self.connection_status = "error"
+        # Load from fallback cache
+        self.channels = load_fallback_channels()
+    finally:
+        self.is_loading = False
 ```
 
 #### **API Timeouts**
 ```python
-# Backend implements timeout handling
-@app.get("/api/channels")
-async def get_channels():
+# Backend implements timeout handling with fallback
+@fastapi_app.get("/stream/{channel_id}")
+async def stream(channel_id: str):
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(external_api_url)
-            return response.json()
+            response = await client.get(stream_url)
+            return response.content
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="External API timeout")
+        raise HTTPException(status_code=504, detail="Stream timeout")
 ```
 
 ### 🔒 Security Considerations
 
 #### **CORS Configuration**
 - **Frontend Origin**: Automatically configured based on `API_URL`
-- **WebSocket CORS**: Socket.IO configured for cross-origin requests
+- **Reflex Security**: Built-in CSRF protection and secure state management
 - **API Endpoints**: CORS headers added for browser compatibility
 
 #### **Rate Limiting**
@@ -707,35 +713,42 @@ async def get_channels():
 - **Limits**: 100 requests per minute per IP
 
 #### **Input Validation**
-- **Search Queries**: Sanitized to prevent injection attacks
+- **Search Queries**: Sanitized through Reflex state validation
 - **Channel IDs**: Validated against known channel list
 - **Stream URLs**: Validated before proxying
+- **State Security**: Reflex prevents direct state manipulation from client
 
 ### 📊 Performance Monitoring
 
 #### **Health Endpoints**
 ```
-GET /health                    # Basic health check
-GET /health/detailed          # Detailed system status
-GET /metrics                  # Prometheus-style metrics
+GET /health                    # Basic health check with channel count
+GET /ping                     # Simple ping endpoint
 ```
 
-#### **WebSocket Connection Monitoring**
-```javascript
-// Frontend tracks connection quality
-socket.on('ping', () => {
-  const latency = Date.now() - socket.lastPingTime;
-  updateConnectionQuality(latency);
-});
+#### **Reflex State Monitoring**
+```python
+# Built-in performance tracking through state variables
+class State(rx.State):
+    connection_status: str = "connected"
+    last_update: str = ""
+    channels_count: int = 0
+    is_loading: bool = False
+    
+    @rx.var
+    def status_color(self) -> str:
+        """Visual indicator of system health"""
+        return "green" if self.connection_status == "connected" else "red"
 ```
 
 #### **Backend Performance Metrics**
-- **Active Connections**: Number of WebSocket connections
-- **Request Rate**: HTTP requests per second
+- **Channel Count**: Number of available channels
+- **Cache Performance**: Stream cache hit rates
 - **Response Times**: Average API response times
 - **Error Rates**: Failed request percentages
+- **Background Tasks**: Channel update task status
 
-This architecture ensures scalable, real-time performance while maintaining separation of concerns between frontend presentation and backend data processing.
+This architecture ensures scalable, real-time performance using Reflex's reactive state management system, eliminating the complexity of manual WebSocket handling while providing instant UI updates.
 
 ---
 

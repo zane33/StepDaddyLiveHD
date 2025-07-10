@@ -17,8 +17,6 @@ header {
 	X-Process-Time {http.response.header.X-Process-Time}
 }
 
-
-
 # Handle CORS preflight requests
 @cors_preflight method OPTIONS
 handle @cors_preflight {
@@ -31,18 +29,7 @@ handle @cors_preflight {
 	respond 204
 }
 
-# Socket.IO routes (handle both HTTP and WebSocket for Socket.IO protocol)
-@socketio_routes path /_event*
-handle @socketio_routes {
-	reverse_proxy localhost:{$BACKEND_PORT} {
-		transport http {
-			dial_timeout 10s
-			response_header_timeout 60s
-		}
-	}
-}
-
-# Other backend routes
+# Backend API routes (Reflex handles WebSocket internally)
 @backend_routes path /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
 	reverse_proxy localhost:{$BACKEND_PORT} {

@@ -1,11 +1,11 @@
 """
 Backend-only entry point for StepDaddyLiveHD.
-This creates a backend app with proper Socket.IO support.
+This creates a backend app for API endpoints only.
+Real-time communication is handled by Reflex's built-in WebSocket system.
 """
 
 import os
 import sys
-import asyncio
 from pathlib import Path
 
 # Add the project root to Python path
@@ -18,22 +18,12 @@ os.environ["REFLEX_ENV"] = "prod"
 # Import required modules
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import socketio
 from StepDaddyLiveHD import backend
-
-# Create Socket.IO server with custom path to match frontend expectations
-sio = socketio.AsyncServer(
-    async_mode='asgi',
-    cors_allowed_origins="*",
-    logger=False,
-    engineio_logger=False,
-    path='/_event'
-)
 
 # Create the main FastAPI app
 app = FastAPI(
     title="StepDaddyLiveHD Backend",
-    description="IPTV proxy backend with Socket.IO support",
+    description="Backend API for StepDaddyLiveHD",
     version="1.0.0"
 )
 
@@ -46,44 +36,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add all routes from the backend
-for route in backend.fastapi_app.routes:
-    app.router.routes.append(route)
+# Include all the backend routes
+app.mount("/", backend.fastapi_app)
 
-# Socket.IO event handlers
-@sio.event
-async def connect(sid, environ):
-    """Handle client connections."""
-    print(f"Client connected: {sid}")
-    await sio.emit('status', {'msg': 'Connected to StepDaddyLiveHD backend'}, room=sid)
-
-@sio.event
-async def disconnect(sid):
-    """Handle client disconnections."""
-    print(f"Client disconnected: {sid}")
-
-@sio.event
-async def message(sid, data):
-    """Handle messages from clients."""
-    print(f"Message from {sid}: {data}")
-    await sio.emit('response', {'msg': f'Received: {data}'}, room=sid)
-
-@sio.event
-async def ping(sid):
-    """Handle ping from clients."""
-    print(f"Ping from {sid}")
-    await sio.emit('pong', room=sid)
-
-# Create ASGI app that combines FastAPI and Socket.IO
-socket_app = socketio.ASGIApp(sio, app)
-
-# Add the lifespan task for channel updates
-@app.on_event("startup")
-async def startup_event():
-    """Start the channel update task on startup."""
-    asyncio.create_task(backend.update_channels())
+# Health check endpoint
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "channels_count": len(backend.step_daddy.channels),
+        "message": "Backend API is running. Real-time features handled by Reflex."
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("BACKEND_PORT", "8000"))
-    uvicorn.run(socket_app, host="0.0.0.0", port=port) 
+    port = int(os.environ.get("BACKEND_PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port) 
