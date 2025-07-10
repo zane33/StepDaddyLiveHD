@@ -17,6 +17,7 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 
 > ⚠️ **Important:** If you plan to use this application across your local network (LAN), you must set `API_URL` to the **local IP address** of the device hosting the server in `.env`.
 
+### Option 1: Docker Compose (Command Line)
 1. Make sure you have Docker and Docker Compose installed on your system.
 2. Clone the repository and navigate into the project directory:
 3. Run the following command to start the application:
@@ -24,10 +25,188 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
    docker compose up -d
    ```
 
-Plain Docker:
+### Option 2: Plain Docker (Command Line)
 ```bash
 docker build -t step-daddy-live-hd .
 docker run -p 3000:3000 step-daddy-live-hd
+```
+
+### Option 3: Portainer Deployment (Recommended for GUI Users)
+
+Portainer provides a user-friendly web interface for managing Docker containers. Here's how to deploy StepDaddyLiveHD using Portainer:
+
+#### **🚀 Method 1: Git Repository Deployment (Best Practice)**
+
+1. **Access Portainer**
+   - Open your Portainer web interface (usually `http://your-server:9000`)
+   - Navigate to **Stacks** → **Add Stack**
+
+2. **Configure Stack**
+   - **Name**: `stepdaddylivehd` (or your preferred name)
+   - **Build method**: Select **Repository**
+   - **Repository URL**: `https://github.com/zane33/StepDaddyLiveHD.git`
+   - **Repository reference**: `main` (or your preferred branch)
+   - **Repository authentication**: Leave empty (public repo)
+
+3. **Compose File Configuration**
+   - **Web editor**: Select this option
+   - **Compose path**: `docker-compose.yml`
+   - Paste the following compose configuration:
+
+```yaml
+version: '3.8'
+
+services:
+  step-daddy-live-hd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - API_URL=${API_URL:-http://localhost:3000}
+      - BACKEND_HOST_URI=${BACKEND_HOST_URI:-}
+      - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
+      - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
+      - SOCKS5=${SOCKS5:-}
+      - WORKERS=${WORKERS:-4}
+    restart: unless-stopped
+    env_file:
+      - .env
+```
+
+4. **Environment Variables (Optional)**
+   - Click **Advanced mode** to add environment variables
+   - Add any custom values you need:
+     ```
+     API_URL=http://192.168.1.100:3000
+     WORKERS=6
+     PROXY_CONTENT=TRUE
+     ```
+
+5. **Deploy**
+   - Click **Deploy the stack**
+   - Portainer will clone the repository and build the container
+
+#### **📁 Method 2: Upload Files**
+
+1. **Prepare Files**
+   - Download the repository as ZIP from GitHub
+   - Extract to a folder on your local machine
+
+2. **Upload to Portainer**
+   - In Portainer, go to **Stacks** → **Add Stack**
+   - **Build method**: Select **Upload**
+   - **Upload path**: Select the extracted folder
+   - **Compose path**: `docker-compose.yml`
+
+3. **Deploy**
+   - Click **Deploy the stack**
+
+#### **🔧 Method 3: Custom Configuration**
+
+For advanced users who want full control:
+
+1. **Create Custom Compose File**
+   ```yaml
+   version: '3.8'
+   
+   services:
+     stepdaddylivehd:
+       build:
+         context: .
+         dockerfile: Dockerfile
+       ports:
+         - "3000:3000"
+       environment:
+         - PORT=3000
+         - API_URL=http://192.168.1.100:3000
+         - DADDYLIVE_URI=https://thedaddy.click
+         - PROXY_CONTENT=TRUE
+         - WORKERS=6
+       restart: unless-stopped
+       container_name: stepdaddylivehd
+   ```
+
+2. **Deploy in Portainer**
+   - Use **Web editor** method
+   - Paste your custom configuration
+   - Deploy
+
+#### **⚙️ Portainer-Specific Tips**
+
+**Resource Allocation:**
+- **Memory**: Minimum 512MB, Recommended 1GB
+- **CPU**: 1-2 cores for basic usage, 4+ cores for high traffic
+- **Storage**: 2-5GB for the container and cache
+
+**Network Configuration:**
+- **Port**: 3000 (default) - change if needed
+- **Network Mode**: Bridge (default)
+- **Publish Ports**: `3000:3000`
+
+**Environment Variables in Portainer:**
+- Use the **Environment** tab in stack configuration
+- Variables are applied at build time
+- Changes require stack redeployment
+
+**Monitoring:**
+- **Logs**: View real-time logs in Portainer
+- **Stats**: Monitor CPU, memory, and network usage
+- **Health Checks**: Built-in health endpoint at `/health`
+
+**Troubleshooting:**
+- **Build Failures**: Check logs for dependency issues
+- **Port Conflicts**: Change port in compose file
+- **Permission Issues**: Ensure proper file permissions
+- **Network Issues**: Verify firewall settings
+
+#### **🔄 Updating in Portainer**
+
+1. **Automatic Updates** (if using Git method):
+   - Go to **Stacks** → Your stack
+   - Click **Pull and redeploy**
+   - Portainer will pull latest changes and rebuild
+
+2. **Manual Updates**:
+   - Download new repository version
+   - Upload and redeploy stack
+   - Or edit compose file in web editor
+
+#### **📊 Performance Optimization**
+
+**For High Traffic:**
+```yaml
+services:
+  stepdaddylivehd:
+    # ... other config ...
+    environment:
+      - WORKERS=8
+      - PROXY_CONTENT=TRUE
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+```
+
+**For Low Resource Systems:**
+```yaml
+services:
+  stepdaddylivehd:
+    # ... other config ...
+    environment:
+      - WORKERS=2
+      - PROXY_CONTENT=FALSE
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 ```
 
 ---

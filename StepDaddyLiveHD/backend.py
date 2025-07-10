@@ -4,6 +4,7 @@ import httpx
 import logging
 import time
 from functools import lru_cache
+from typing import Optional
 from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
 from fastapi import Response, status, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
@@ -152,7 +153,7 @@ async def update_channels():
 def get_channels():
     return step_daddy.channels
 
-def get_channel(channel_id) -> Channel | None:
+def get_channel(channel_id) -> Optional[Channel]:
     if not channel_id or channel_id == "":
         return None
     return next((channel for channel in step_daddy.channels if channel.id == channel_id), None)
