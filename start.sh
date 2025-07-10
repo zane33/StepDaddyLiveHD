@@ -30,7 +30,9 @@ echo "Caddy started successfully"
 
 # Get number of workers from environment or use default
 WORKERS=${WORKERS:-4}
-echo "Starting Reflex backend with $WORKERS workers..."
+# Get backend port from environment or use default
+BACKEND_PORT=${BACKEND_PORT:-8000}
+echo "Starting Reflex backend with $WORKERS workers on port $BACKEND_PORT..."
 
 # Start the backend with multiple workers using the backend-only entry point
-cd /app && exec uvicorn StepDaddyLiveHD.backend_app:app --host 0.0.0.0 --port 8000 --workers $WORKERS 
+cd /app && exec uvicorn StepDaddyLiveHD.backend_app:app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS 

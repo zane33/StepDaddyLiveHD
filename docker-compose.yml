@@ -15,4 +15,5 @@ services:
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
       - WORKERS=${WORKERS:-6}
+      - BACKEND_PORT=${BACKEND_PORT:-8005}
     restart: unless-stopped
