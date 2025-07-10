@@ -34,5 +34,5 @@ WORKERS=${WORKERS:-4}
 BACKEND_PORT=${BACKEND_PORT:-8000}
 echo "Starting Reflex backend with $WORKERS workers on port $BACKEND_PORT..."
 
-# Start the backend with multiple workers using the backend-only entry point
-cd /app && exec uvicorn StepDaddyLiveHD.backend_app:app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS 
+# Start the backend with multiple workers using the Socket.IO app
+cd /app && exec uvicorn StepDaddyLiveHD.backend_app:socket_app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS 

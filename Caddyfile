@@ -31,9 +31,9 @@ handle @cors_preflight {
 	respond 204
 }
 
-# WebSocket routes (handle separately for better WebSocket support)
-@websocket_routes path /_event/*
-handle @websocket_routes {
+# Socket.IO routes (handle both HTTP and WebSocket for Socket.IO protocol)
+@socketio_routes path /_event*
+handle @socketio_routes {
 	reverse_proxy localhost:{$BACKEND_PORT} {
 		transport http {
 			dial_timeout 10s
