@@ -2,33 +2,27 @@
 
 echo "Starting StepDaddyLiveHD services..."
 
-# Start Caddy in the background
-echo "Starting Caddy..."
-caddy start &
-CADDY_PID=$!
-
 # Start Redis in the background
 echo "Starting Redis..."
 redis-server --daemonize yes
 
-# Wait a moment for services to start
-sleep 2
+# Wait for Redis to start
+echo "Waiting for Redis..."
+until redis-cli ping &>/dev/null; do
+    sleep 1
+done
+echo "Redis started successfully"
 
-# Check if Caddy is running
-if kill -0 $CADDY_PID 2>/dev/null; then
-    echo "Caddy started successfully (PID: $CADDY_PID)"
-else
-    echo "Failed to start Caddy"
-    exit 1
-fi
+# Start Caddy
+echo "Starting Caddy..."
+caddy start
 
-# Check if Redis is running
-if redis-cli ping >/dev/null 2>&1; then
-    echo "Redis started successfully"
-else
-    echo "Failed to start Redis"
-    exit 1
-fi
+# Wait for Caddy to be ready
+echo "Waiting for Caddy..."
+until curl -s http://localhost:2019/config/ &>/dev/null; do
+    sleep 1
+done
+echo "Caddy started successfully"
 
 # Get number of workers from environment or use default
 WORKERS=${WORKERS:-4}
