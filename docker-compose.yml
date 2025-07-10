@@ -4,7 +4,7 @@ services:
   step-daddy-live-hd:
     build:
       context: .
-      dockerfile: Dockerfile.runtime
+      dockerfile: Dockerfile
     ports:
       - "${PORT:-3232}:${PORT:-3232}"
     environment:

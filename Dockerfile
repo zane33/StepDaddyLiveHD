@@ -59,7 +59,6 @@ ENV PATH="/app/.venv/bin:$PATH" PORT=${PORT:-3232} REFLEX_API_URL=${API_URL:-htt
 WORKDIR /app
 COPY --from=builder /app /app
 COPY --from=builder /srv /srv
-COPY Caddyfile.simple /etc/caddy/Caddyfile
 
 # Needed until Reflex properly passes SIGTERM on backend.
 STOPSIGNAL SIGKILL
