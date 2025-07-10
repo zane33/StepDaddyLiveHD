@@ -14,7 +14,7 @@ services:
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
-      - WORKERS=${WORKERS:-4}
+      - WORKERS=${WORKERS:-6}
     restart: unless-stopped
     env_file:
       - .env
