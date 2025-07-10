@@ -6,9 +6,9 @@ services:
       context: .
       dockerfile: Dockerfile.runtime
     ports:
-      - "${PORT:-3000}:${PORT:-3000}"
+      - "${PORT:-3232}:${PORT:-3232}"
     environment:
-      - PORT=${PORT:-3000}
+      - PORT=${PORT:-3232}
       - API_URL=${API_URL:-}
       - BACKEND_HOST_URI=${BACKEND_HOST_URI:-}
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
