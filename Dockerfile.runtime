@@ -22,6 +22,9 @@ RUN pip install -r requirements.txt
 # Copy application files
 COPY . .
 
+# Copy simplified Caddyfile
+COPY Caddyfile.simple /etc/caddy/Caddyfile
+
 # Make startup script executable
 RUN chmod +x /app/start.sh
 

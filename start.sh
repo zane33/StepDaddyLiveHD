@@ -4,7 +4,7 @@ echo "Starting StepDaddyLiveHD services..."
 
 # Start Caddy in the background
 echo "Starting Caddy..."
-caddy start &
+caddy start --config /etc/caddy/Caddyfile &
 CADDY_PID=$!
 
 # Start Redis in the background

@@ -2,20 +2,11 @@
 
 encode gzip
 
-# Add headers for better performance
+# Add CORS headers
 header {
-    # Enable CORS
     Access-Control-Allow-Origin *
     Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
-    
-    # Security headers
-    X-Content-Type-Options nosniff
-    X-Frame-Options DENY
-    X-XSS-Protection "1; mode=block"
-    
-    # Performance headers
-    X-Process-Time {http.response.header.X-Process-Time}
 }
 
 # Handle CORS preflight requests
@@ -30,20 +21,14 @@ handle @cors_preflight {
     respond 204
 }
 
-# Backend routes
+# Backend API routes
 @backend_routes path /_event/* /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
-    reverse_proxy localhost:8000 {
-        # Timeouts
-        timeout 60s
-        dial_timeout 10s
-    }
+    reverse_proxy localhost:8000
 }
 
+# Serve static files
 handle {
     root * /srv
-    route {
-        try_files {path} {path}/ /404.html
-        file_server
-    }
-}
+    file_server
+} 
