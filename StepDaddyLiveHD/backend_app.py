@@ -27,7 +27,7 @@ ws_url = urlunparse(parsed_url._replace(netloc=f"{parsed_url.hostname}:{backend_
 
 # Import required modules
 import reflex as rx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from StepDaddyLiveHD import backend
@@ -38,9 +38,6 @@ app = rx.App(_state=State)
 
 # Create a new FastAPI app
 fastapi_app = FastAPI()
-
-# Mount the Reflex app
-fastapi_app.mount("/_event", app._api)
 
 # Add CORS middleware
 fastapi_app.add_middleware(
@@ -63,22 +60,18 @@ fastapi_app.add_middleware(
 # Create a middleware to handle both Reflex and backend routes
 @fastapi_app.middleware("http")
 async def route_middleware(request: Request, call_next):
-    # Check if it's a WebSocket request or other Reflex-specific paths
-    if request.url.path.startswith("/_event"):
-        # Let Reflex handle its routes
-        return await call_next(request)
-    
     # Strip /api prefix if present
     path = request.url.path
     if path.startswith("/api"):
         path = path[4:]  # Remove /api prefix
-    
-    # Modify request scope to change path
-    request.scope["path"] = path
+        request.scope["path"] = path
     
     # Forward to backend app
     response = await backend.fastapi_app(request.scope, request.receive, request.send)
     return response
+
+# Mount the Reflex app for WebSocket events
+fastapi_app.mount("/_event", app._api)
 
 # Health check endpoint
 @fastapi_app.get("/health")
