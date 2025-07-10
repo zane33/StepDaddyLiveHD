@@ -26,7 +26,7 @@ from StepDaddyLiveHD import backend
 from StepDaddyLiveHD.StepDaddyLiveHD import State
 
 # Initialize the Reflex app with WebSocket support
-app = rx.App(state=State)
+app = rx.App(_state=State)  # Changed from state= to _state=
 
 # Get the FastAPI app instance from Reflex
 fastapi_app = app.api.fastapi_app
