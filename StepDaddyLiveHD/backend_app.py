@@ -19,8 +19,9 @@ api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
 
 # Import required modules
 import reflex as rx
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from StepDaddyLiveHD import backend
 from StepDaddyLiveHD.StepDaddyLiveHD import State
 
@@ -45,8 +46,25 @@ fastapi_app.add_middleware(
     expose_headers=["*"],
 )
 
-# Include all the backend routes
-fastapi_app.mount("/api", backend.fastapi_app)
+# Create a middleware to handle both Reflex and backend routes
+@fastapi_app.middleware("http")
+async def route_middleware(request: Request, call_next):
+    # Check if it's a WebSocket request or other Reflex-specific paths
+    if request.url.path.startswith("/_event"):
+        # Let Reflex handle its routes
+        return await call_next(request)
+    
+    # Strip /api prefix if present
+    path = request.url.path
+    if path.startswith("/api"):
+        path = path[4:]  # Remove /api prefix
+    
+    # Modify request scope to change path
+    request.scope["path"] = path
+    
+    # Forward to backend app
+    response = await backend.fastapi_app(request.scope, request.receive, request.send)
+    return response
 
 # Health check endpoint
 @fastapi_app.get("/health")

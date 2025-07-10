@@ -3,59 +3,37 @@
 encode gzip
 
 header {
-	# Enable CORS
-	Access-Control-Allow-Origin *
-	Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-	Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
-	
-	# Security headers
-	X-Content-Type-Options nosniff
-	X-Frame-Options DENY
-	X-XSS-Protection "1; mode=block"
-	
-	# Performance headers
-	X-Process-Time {http.response.header.X-Process-Time}
+    # Enable CORS
+    Access-Control-Allow-Origin *
+    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
+    
+    # Security headers
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    X-XSS-Protection "1; mode=block"
+    
+    # Performance headers
+    X-Process-Time {http.response.header.X-Process-Time}
 }
 
 # Handle CORS preflight requests
 @cors_preflight method OPTIONS
 handle @cors_preflight {
-	header {
-		Access-Control-Allow-Origin *
-		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
-		Access-Control-Max-Age 86400
-	}
-	respond 204
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
+        Access-Control-Max-Age 86400
+    }
+    respond 204
 }
 
-# WebSocket endpoint
-@websocket {
-    path /_event*
-    header Connection *Upgrade*
-    header Upgrade websocket
-}
-
-handle @websocket {
+# All backend routes including WebSocket and API
+handle_path /* {
     reverse_proxy 0.0.0.0:{$BACKEND_PORT} {
         transport http {
             versions h1
-        }
-        header_up -Origin  # Remove Origin header to prevent CORS issues
-        header_up Host {http.request.host}
-        header_up X-Real-IP {http.request.remote.host}
-        header_up X-Forwarded-For {http.request.remote.host}
-        header_up X-Forwarded-Proto {http.request.scheme}
-    }
-}
-
-# Backend API routes
-@backend_routes path /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health /_event*
-handle @backend_routes {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT} {
-        transport http {
-            dial_timeout 10s
-            response_header_timeout 60s
         }
         header_up Host {http.request.host}
         header_up X-Real-IP {http.request.remote.host}
