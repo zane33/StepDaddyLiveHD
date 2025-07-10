@@ -4,3 +4,4 @@ httpx[http2]==0.28.1
 python-dateutil==2.9.0
 uvicorn[standard]==0.32.1
 aiohttp==3.10.11
+fastapi==0.115.6
