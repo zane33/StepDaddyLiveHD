@@ -1,6 +1,6 @@
 """
 Backend-only entry point for StepDaddyLiveHD.
-This creates a backend app with proper Socket.IO support.
+This creates a backend app that accepts WebSocket connections without complex protocols.
 """
 
 import os
@@ -16,23 +16,14 @@ sys.path.insert(0, str(project_root))
 os.environ["REFLEX_ENV"] = "prod"
 
 # Import required modules
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-import socketio
 from StepDaddyLiveHD import backend
-
-# Create Socket.IO server
-sio = socketio.AsyncServer(
-    cors_allowed_origins="*",
-    async_mode="asgi",
-    engineio_logger=True,
-    logger=True
-)
 
 # Create the main FastAPI app
 app = FastAPI(
     title="StepDaddyLiveHD Backend",
-    description="IPTV proxy backend with Socket.IO support",
+    description="IPTV proxy backend with minimal WebSocket support",
     version="1.0.0"
 )
 
@@ -49,31 +40,51 @@ app.add_middleware(
 for route in backend.fastapi_app.routes:
     app.router.routes.append(route)
 
-# Socket.IO event handlers
-@sio.event
-async def connect(sid, environ):
-    print(f"Socket.IO client connected: {sid}")
+# Minimal WebSocket endpoint that just accepts and maintains connections
+@app.websocket("/_event/")
+async def websocket_event_endpoint(websocket: WebSocket):
+    """Handle WebSocket connections at /_event/ path."""
+    try:
+        await websocket.accept()
+        print(f"WebSocket accepted: {websocket.client}")
+        
+        # Just keep the connection alive indefinitely
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            pass
+            
+    except WebSocketDisconnect:
+        print(f"WebSocket disconnected: {websocket.client}")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
 
-@sio.event
-async def disconnect(sid):
-    print(f"Socket.IO client disconnected: {sid}")
-
-@sio.event
-async def message(sid, data):
-    print(f"Received message from {sid}: {data}")
-    await sio.emit('response', {'data': 'Message received'}, room=sid)
-
-# Mount the Socket.IO app to handle /_event
-socketio_app = socketio.ASGIApp(sio, app, socketio_path='/_event')
+# Handle parameterized paths as well
+@app.websocket("/_event/{path:path}")  
+async def websocket_event_path_endpoint(websocket: WebSocket, path: str):
+    """Handle WebSocket connections at /_event/* paths."""
+    try:
+        await websocket.accept()
+        print(f"WebSocket accepted on path '{path}': {websocket.client}")
+        
+        # Just keep the connection alive indefinitely
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            pass
+            
+    except WebSocketDisconnect:
+        print(f"WebSocket disconnected from path '{path}': {websocket.client}")
+    except Exception as e:
+        print(f"WebSocket error on path '{path}': {e}")
 
 # Add the lifespan task for channel updates
 @app.on_event("startup")
 async def startup_event():
     """Start the channel update task on startup."""
     asyncio.create_task(backend.update_channels())
-
-# Export the combined app
-app = socketio_app
 
 if __name__ == "__main__":
     import uvicorn
