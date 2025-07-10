@@ -48,10 +48,35 @@ async def websocket_event_endpoint(websocket: WebSocket):
         await websocket.accept()
         print(f"WebSocket accepted: {websocket.client}")
         
-        # Just keep the connection alive indefinitely
+        # Send minimal Engine.IO handshake to satisfy the client
+        try:
+            handshake = '0{"sid":"mock_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
+            await websocket.send_text(handshake)
+            print(f"Sent Engine.IO handshake: {handshake}")
+        except Exception as e:
+            print(f"Failed to send handshake: {e}")
+        
+        # Keep the connection alive and handle any messages
         try:
             while True:
-                await asyncio.sleep(1)
+                try:
+                    # Try to receive messages with a timeout
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                    print(f"Received: {data}")
+                    
+                    # Respond to ping/pong
+                    if data == "2":  # ping
+                        await websocket.send_text("3")  # pong
+                        print("Sent pong")
+                    elif data.startswith("40"):  # Socket.IO connect
+                        await websocket.send_text("40")  # ack
+                        print("Sent Socket.IO ack")
+                        
+                except asyncio.TimeoutError:
+                    # Send periodic ping to keep alive
+                    await websocket.send_text("2")
+                    print("Sent keepalive ping")
+                    
         except asyncio.CancelledError:
             pass
             
@@ -68,10 +93,35 @@ async def websocket_event_path_endpoint(websocket: WebSocket, path: str):
         await websocket.accept()
         print(f"WebSocket accepted on path '{path}': {websocket.client}")
         
-        # Just keep the connection alive indefinitely
+        # Send minimal Engine.IO handshake to satisfy the client
+        try:
+            handshake = '0{"sid":"mock_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
+            await websocket.send_text(handshake)
+            print(f"Sent Engine.IO handshake on '{path}': {handshake}")
+        except Exception as e:
+            print(f"Failed to send handshake on '{path}': {e}")
+        
+        # Keep the connection alive and handle any messages
         try:
             while True:
-                await asyncio.sleep(1)
+                try:
+                    # Try to receive messages with a timeout
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                    print(f"Received on '{path}': {data}")
+                    
+                    # Respond to ping/pong
+                    if data == "2":  # ping
+                        await websocket.send_text("3")  # pong
+                        print(f"Sent pong on '{path}'")
+                    elif data.startswith("40"):  # Socket.IO connect
+                        await websocket.send_text("40")  # ack
+                        print(f"Sent Socket.IO ack on '{path}'")
+                        
+                except asyncio.TimeoutError:
+                    # Send periodic ping to keep alive
+                    await websocket.send_text("2")
+                    print(f"Sent keepalive ping on '{path}'")
+                    
         except asyncio.CancelledError:
             pass
             
