@@ -28,7 +28,7 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 ### Option 2: Plain Docker (Command Line)
 ```bash
 docker build -t step-daddy-live-hd .
-docker run -p 3000:3000 step-daddy-live-hd
+docker run -p 3232:3232 step-daddy-live-hd
 ```
 
 ### Option 3: Portainer Deployment (Recommended for GUI Users)
@@ -62,10 +62,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3232:3232"
     environment:
-      - PORT=3000
-      - API_URL=${API_URL:-http://localhost:3000}
+      - PORT=3232
+      - API_URL=${API_URL:-http://localhost:3232}
       - BACKEND_HOST_URI=${BACKEND_HOST_URI:-}
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
@@ -80,7 +80,7 @@ services:
    - Click **Advanced mode** to add environment variables
    - Add any custom values you need:
      ```
-     API_URL=http://192.168.1.100:3000
+     API_URL=http://192.168.1.100:3232
      WORKERS=6
      PROXY_CONTENT=TRUE
      ```
@@ -118,10 +118,10 @@ For advanced users who want full control:
          context: .
          dockerfile: Dockerfile
        ports:
-         - "3000:3000"
+         - "3232:3232"
        environment:
-         - PORT=3000
-         - API_URL=http://192.168.1.100:3000
+         - PORT=3232
+         - API_URL=http://192.168.1.100:3232
          - DADDYLIVE_URI=https://thedaddy.click
          - PROXY_CONTENT=TRUE
          - WORKERS=6
@@ -142,9 +142,9 @@ For advanced users who want full control:
 - **Storage**: 2-5GB for the container and cache
 
 **Network Configuration:**
-- **Port**: 3000 (default) - change if needed
+- **Port**: 3232 (default) - change if needed
 - **Network Mode**: Bridge (default)
-- **Publish Ports**: `3000:3000`
+- **Publish Ports**: `3232:3232`
 
 **Environment Variables in Portainer:**
 - Use the **Environment** tab in stack configuration
@@ -247,15 +247,15 @@ StepDaddyLiveHD uses several environment variables to configure its behavior. He
 
 #### **🌐 Network & Server Configuration**
 
-- **`PORT`** (default: `3000`)
+- **`PORT`** (default: `3232`)
   - **Purpose**: Sets the port number that Caddy (the reverse proxy) listens on
-  - **Usage**: Change this if port 3000 is already in use on your system
+  - **Usage**: Change this if port 3232 is already in use on your system
   - **Example**: `PORT=8080` to run on port 8080
 
 - **`API_URL`** (optional)
   - **Purpose**: Sets the public URL where your server is accessible
   - **When Required**: 
-    - For LAN access: Set to your local IP (e.g., `http://192.168.1.100:3000`)
+    - For LAN access: Set to your local IP (e.g., `http://192.168.1.100:3232`)
     - For internet access: Set to your domain (e.g., `https://yourdomain.com`)
   - **Impact**: Affects how URLs are generated in playlists and web interface
   - **Example**: `API_URL=https://iptv.yourdomain.com`
@@ -318,8 +318,8 @@ StepDaddyLiveHD uses several environment variables to configure its behavior. He
 #### **🏠 Basic Home Setup**
 ```bash
 # Simple local setup
-PORT=3000
-API_URL=http://192.168.1.100:3000
+PORT=3232
+API_URL=http://192.168.1.100:3232
 PROXY_CONTENT=TRUE
 WORKERS=4
 ```
@@ -327,7 +327,7 @@ WORKERS=4
 #### **🌍 Internet-Facing Server**
 ```bash
 # Production setup with domain
-PORT=3000
+PORT=3232
 API_URL=https://iptv.yourdomain.com
 PROXY_CONTENT=TRUE
 WORKERS=6
@@ -336,7 +336,7 @@ WORKERS=6
 #### **🎯 High-Performance Deployment**
 ```bash
 # Optimized for high traffic
-PORT=3000
+PORT=3232
 API_URL=https://iptv.yourdomain.com
 BACKEND_HOST_URI=http://backend.yourdomain.com:8000
 PROXY_CONTENT=TRUE
@@ -346,7 +346,7 @@ WORKERS=8
 #### **🔒 Privacy-Focused Setup**
 ```bash
 # With SOCKS5 proxy for enhanced privacy
-PORT=3000
+PORT=3232
 API_URL=https://iptv.yourdomain.com
 PROXY_CONTENT=TRUE
 WORKERS=4
@@ -356,7 +356,7 @@ SOCKS5=user:password@proxy.example.com:1080
 #### **📱 External Players Only**
 ```bash
 # Optimized for VLC/MPV usage (lower server load)
-PORT=3000
+PORT=3232
 API_URL=https://iptv.yourdomain.com
 PROXY_CONTENT=FALSE
 WORKERS=2
@@ -372,7 +372,7 @@ WORKERS=2
 #### **Can't Access from Other Devices**
 - **Problem**: Only accessible from localhost
 - **Solution**: Set `API_URL` to your local IP address
-- **Example**: `API_URL=http://192.168.1.100:3000`
+- **Example**: `API_URL=http://192.168.1.100:3232`
 
 #### **High Server Load**
 - **Problem**: Server becomes slow with multiple users
@@ -405,15 +405,15 @@ WORKERS=2
 
 **Basic Configuration:**
 ```bash
-PORT=3000
-API_URL=http://localhost:3000
+PORT=3232
+API_URL=http://localhost:3232
 PROXY_CONTENT=TRUE
 WORKERS=4
 ```
 
 **Advanced Configuration with Custom Endpoints:**
 ```bash
-PORT=3000
+PORT=3232
 API_URL=https://your-domain.com
 BACKEND_HOST_URI=http://backend.your-domain.com:8000
 DADDYLIVE_URI=https://custom-daddylive.example.com
@@ -424,7 +424,7 @@ SOCKS5=127.0.0.1:1080
 
 **High-Performance Configuration:**
 ```bash
-PORT=3000
+PORT=3232
 API_URL=https://your-domain.com
 WORKERS=8
 PROXY_CONTENT=TRUE
@@ -434,11 +434,11 @@ PROXY_CONTENT=TRUE
 ```bash
 # Basic setup
 docker build -t step-daddy-live-hd .
-docker run -p 3000:3000 step-daddy-live-hd
+docker run -p 3232:3232 step-daddy-live-hd
 
 # Advanced setup with all options
 docker build \
-  --build-arg PORT=3000 \
+  --build-arg PORT=3232 \
   --build-arg API_URL=https://iptv.yourdomain.com \
   --build-arg BACKEND_HOST_URI=http://backend.yourdomain.com:8000 \
   --build-arg DADDYLIVE_URI=https://thedaddy.click \
@@ -448,23 +448,23 @@ docker build \
   -t step-daddy-live-hd .
 
 docker run \
-  -e PORT=3000 \
+  -e PORT=3232 \
   -e API_URL=https://iptv.yourdomain.com \
   -e BACKEND_HOST_URI=http://backend.yourdomain.com:8000 \
   -e DADDYLIVE_URI=https://thedaddy.click \
   -e PROXY_CONTENT=TRUE \
   -e WORKERS=8 \
   -e SOCKS5=user:password@proxy.example.com:1080 \
-  -p 3000:3000 \
+  -p 3232:3232 \
   step-daddy-live-hd
 
 # Minimal setup for external players only
 docker run \
-  -e PORT=3000 \
-  -e API_URL=http://192.168.1.100:3000 \
+  -e PORT=3232 \
+  -e API_URL=http://192.168.1.100:3232 \
   -e PROXY_CONTENT=FALSE \
   -e WORKERS=2 \
-  -p 3000:3000 \
+  -p 3232:3232 \
   step-daddy-live-hd
 ```
 
