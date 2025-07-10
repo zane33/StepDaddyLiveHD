@@ -15,6 +15,9 @@ sys.path.insert(0, str(project_root))
 # Set environment variables for production mode
 os.environ["REFLEX_ENV"] = "prod"
 
+# Get environment variables
+api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
+
 # Import required modules
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,10 +33,15 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        api_url,  # Frontend URL from environment
+        "http://localhost:3232",     # Local development
+        "http://127.0.0.1:3232",    # Alternative local
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include all the backend routes

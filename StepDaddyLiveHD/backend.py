@@ -16,6 +16,9 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Get environment variables
+api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
+
 # Create FastAPI app with better configuration
 fastapi_app = FastAPI(
     title="StepDaddyLiveHD API",
@@ -26,10 +29,15 @@ fastapi_app = FastAPI(
 # Add CORS middleware
 fastapi_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend domains
+    allow_origins=[
+        api_url,  # Frontend URL from environment
+        "http://localhost:3232",     # Local development
+        "http://127.0.0.1:3232",    # Alternative local
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Create HTTP client with connection pooling
