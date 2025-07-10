@@ -35,8 +35,10 @@ handle @cors_preflight {
 handle @backend_routes {
     reverse_proxy localhost:8000 {
         # Timeouts
-        timeout 60s
-        dial_timeout 10s
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 60s
+        }
     }
 }
 
