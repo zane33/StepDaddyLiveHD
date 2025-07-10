@@ -97,34 +97,32 @@ async def websocket_event_slash_endpoint(websocket: WebSocket):
         await websocket.accept()
         print(f"WebSocket accepted (with slash): {websocket.client}")
         
-        # Send Engine.IO handshake immediately upon connection
-        try:
-            handshake = '0{"sid":"mock_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
-            await websocket.send_text(handshake)
-            print(f"Sent Engine.IO handshake (with slash): {handshake}")
-        except Exception as e:
-            print(f"Failed to send handshake (with slash): {e}")
-            return
+        # Don't send handshake immediately, wait for client message first
+        print("Waiting for client message (with slash)...")
         
         # Keep the connection alive and handle any messages
         try:
             while True:
                 try:
                     # Try to receive messages with a timeout
-                    data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
                     print(f"Received (with slash): {data}")
                     
-                    # Respond to ping/pong
+                    # Handle Engine.IO protocol
                     if data == "2":  # ping
                         await websocket.send_text("3")  # pong
                         print("Sent pong (with slash)")
                     elif data.startswith("40"):  # Socket.IO connect
                         await websocket.send_text("40")  # ack
                         print("Sent Socket.IO ack (with slash)")
+                    elif data.startswith("42"):  # Socket.IO message
+                        await websocket.send_text("42[\"message received\"]")  # ack
+                        print("Sent Socket.IO message ack (with slash)")
                     else:
-                        # Echo back any other message
-                        await websocket.send_text(data)
-                        print(f"Echoed (with slash): {data}")
+                        # For any other message, send Engine.IO handshake
+                        handshake = '0{"sid":"mock_session","upgrades":[],"pingInterval":25000,"pingTimeout":60000}'
+                        await websocket.send_text(handshake)
+                        print(f"Sent Engine.IO handshake in response to: {data}")
                         
                 except asyncio.TimeoutError:
                     # Send periodic ping to keep alive
