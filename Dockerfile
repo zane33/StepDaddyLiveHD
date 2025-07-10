@@ -1,11 +1,4 @@
-ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5
-
-# Only set for local/direct access. When TLS is used, the API_URL is assumed to be the same as the frontend.
-ARG API_URL
-
-# It uses a reverse proxy to serve the frontend statically and proxy to backend
-# from a single exposed port, expecting TLS termination to be handled at the
-# edge by the given platform.
+# Build stage
 FROM python:3.13 AS builder
 
 # Install system dependencies including Node.js and npm
@@ -42,21 +35,19 @@ COPY . .
 # Make startup script executable
 RUN chmod +x /app/start.sh
 
-ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5 BACKEND_PORT
+ARG PORT BACKEND_PORT API_URL DADDYLIVE_URI PROXY_CONTENT SOCKS5
 
 # Set environment variables for the build
 ENV PORT=${PORT:-3232} \
     BACKEND_PORT=${BACKEND_PORT:-8005} \
-    REFLEX_API_URL=http://192.168.4.5:${BACKEND_PORT:-8005} \
-    API_URL=${API_URL:-http://192.168.4.5:${PORT:-3232}} \
-    BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} \
+    API_URL=${API_URL:-http://192.168.4.5:3232} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
     SOCKS5=${SOCKS5:-""}
 
 # Download other npm dependencies and compile frontend
 RUN mkdir -p /srv && \
-    echo "Building frontend with REFLEX_API_URL=$REFLEX_API_URL" && \
+    echo "Building frontend with API_URL=$API_URL" && \
     echo "Current directory: $(pwd)" && \
     echo "Node.js version: $(node --version)" && \
     echo "npm version: $(npm --version)" && \
@@ -89,19 +80,17 @@ RUN apt-get update -y && apt-get install -y \
 # Verify Node.js and npm are available in final image
 RUN node --version && npm --version
 
-ARG PORT API_URL BACKEND_HOST_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5 BACKEND_PORT
+ARG PORT BACKEND_PORT API_URL DADDYLIVE_URI PROXY_CONTENT SOCKS5
 ENV PATH="/app/.venv/bin:$PATH" \
     PORT=${PORT:-3232} \
     BACKEND_PORT=${BACKEND_PORT:-8005} \
-    REFLEX_API_URL=http://192.168.4.5:${BACKEND_PORT:-8005} \
-    API_URL=${API_URL:-http://192.168.4.5:${PORT:-3232}} \
-    BACKEND_HOST_URI=${BACKEND_HOST_URI:-""} \
+    API_URL=${API_URL:-http://192.168.4.5:3232} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     REDIS_URL=redis://localhost \
     PYTHONUNBUFFERED=1 \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
     SOCKS5=${SOCKS5:-""} \
-    WORKERS=${WORKERS:-4}
+    WORKERS=${WORKERS:-6}
 
 WORKDIR /app
 COPY --from=builder /app /app
@@ -110,7 +99,7 @@ COPY --from=builder /srv /srv
 # Needed until Reflex properly passes SIGTERM on backend.
 STOPSIGNAL SIGKILL
 
-EXPOSE $PORT
+EXPOSE $PORT $BACKEND_PORT
 
 # Starting the backend with multiple workers
 CMD ["/app/start.sh"]

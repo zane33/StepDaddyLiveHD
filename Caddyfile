@@ -29,7 +29,22 @@ handle @cors_preflight {
 	respond 204
 }
 
-# Backend API routes (Reflex handles WebSocket internally)
+# WebSocket endpoint
+@websocket {
+    path /_event
+    header Connection *Upgrade*
+    header Upgrade websocket
+}
+
+handle @websocket {
+    reverse_proxy localhost:{$BACKEND_PORT} {
+        transport http {
+            versions h1
+        }
+    }
+}
+
+# Backend API routes
 @backend_routes path /ping /_upload /_upload/* /stream/* /key/* /content/* /playlist.m3u8 /logo/* /health
 handle @backend_routes {
 	reverse_proxy localhost:{$BACKEND_PORT} {

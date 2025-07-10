@@ -15,7 +15,7 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 
 ## 🐳 Docker Installation (Recommended)
 
-> ⚠️ **Important:** If you plan to use this application across your local network (LAN), you must set `API_URL` to the **local IP address** of the device hosting the server in `.env`.
+> ⚠️ **Important:** If you plan to use this application across your local network (LAN), you must set `API_URL` to the **local IP address** of the device hosting the server.
 
 ### Option 1: Docker Compose (Command Line)
 1. Make sure you have Docker and Docker Compose installed on your system.
@@ -28,245 +28,30 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 ### Option 2: Plain Docker (Command Line)
 ```bash
 docker build -t step-daddy-live-hd .
-docker run -p 3232:3232 step-daddy-live-hd
+docker run -p 3232:3232 -p 8005:8005 step-daddy-live-hd
 ```
 
-### Option 3: Portainer Deployment (Recommended for GUI Users)
+### Configuration Variables
 
-Portainer provides a user-friendly web interface for managing Docker containers. Here's how to deploy StepDaddyLiveHD using Portainer:
-
-#### **🚀 Method 1: Git Repository Deployment (Best Practice)**
-
-1. **Access Portainer**
-   - Open your Portainer web interface (usually `http://your-server:9000`)
-   - Navigate to **Stacks** → **Add Stack**
-
-2. **Configure Stack**
-   - **Name**: `stepdaddylivehd` (or your preferred name)
-   - **Build method**: Select **Repository**
-   - **Repository URL**: `https://github.com/zane33/StepDaddyLiveHD.git`
-   - **Repository reference**: `main` (or your preferred branch)
-   - **Repository authentication**: Leave empty (public repo)
-
-3. **Compose File Configuration**
-   - **Web editor**: Select this option
-   - **Compose path**: `docker-compose.yml`
-   - Paste the following compose configuration:
-
-```yaml
-version: '3.8'
-
-services:
-  step-daddy-live-hd:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3232:3232"
-    environment:
-      - PORT=3232
-      - API_URL=${API_URL:-http://localhost:${PORT:-3232}}
-      - BACKEND_HOST_URI=${BACKEND_HOST_URI:-}
-      - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
-      - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
-      - SOCKS5=${SOCKS5:-}
-      - WORKERS=${WORKERS:-4}
-    restart: unless-stopped
-    env_file:
-      - .env
-```
-
-4. **Environment Variables (Optional)**
-   - Click **Advanced mode** to add environment variables
-   - Add any custom values you need:
-     ```
-     API_URL=http://192.168.1.100:3232
-     WORKERS=6
-     PROXY_CONTENT=TRUE
-     ```
-
-5. **Deploy**
-   - Click **Deploy the stack**
-   - Portainer will clone the repository and build the container
-
-#### **📁 Method 2: Upload Files**
-
-1. **Prepare Files**
-   - Download the repository as ZIP from GitHub
-   - Extract to a folder on your local machine
-
-2. **Upload to Portainer**
-   - In Portainer, go to **Stacks** → **Add Stack**
-   - **Build method**: Select **Upload**
-   - **Upload path**: Select the extracted folder
-   - **Compose path**: `docker-compose.yml`
-
-3. **Deploy**
-   - Click **Deploy the stack**
-
-#### **🔧 Method 3: Custom Configuration**
-
-For advanced users who want full control:
-
-1. **Create Custom Compose File**
-   ```yaml
-   version: '3.8'
-   
-   services:
-     stepdaddylivehd:
-       build:
-         context: .
-         dockerfile: Dockerfile
-       ports:
-         - "3232:3232"
-       environment:
-         - PORT=3232
-         - API_URL=http://192.168.1.100:3232
-         - DADDYLIVE_URI=https://thedaddy.click
-         - PROXY_CONTENT=TRUE
-         - WORKERS=6
-       restart: unless-stopped
-       container_name: stepdaddylivehd
-   ```
-
-2. **Deploy in Portainer**
-   - Use **Web editor** method
-   - Paste your custom configuration
-   - Deploy
-
-#### **⚙️ Portainer-Specific Tips**
-
-**Resource Allocation:**
-- **Memory**: Minimum 512MB, Recommended 1GB
-- **CPU**: 1-2 cores for basic usage, 4+ cores for high traffic
-- **Storage**: 2-5GB for the container and cache
-
-**Network Configuration:**
-- **Port**: 3232 (default) - change if needed
-- **Network Mode**: Bridge (default)
-- **Publish Ports**: `3232:3232`
-
-**Environment Variables in Portainer:**
-- Use the **Environment** tab in stack configuration
-- Variables are applied at build time
-- Changes require stack redeployment
-
-**Monitoring:**
-- **Logs**: View real-time logs in Portainer
-- **Stats**: Monitor CPU, memory, and network usage
-- **Health Checks**: Built-in health endpoint at `/health`
-
-**Troubleshooting:**
-- **Build Failures**: Check logs for dependency issues
-- **Port Conflicts**: Change port in compose file
-- **Permission Issues**: Ensure proper file permissions
-- **Network Issues**: Verify firewall settings
-
-#### **🔄 Updating in Portainer**
-
-1. **Automatic Updates** (if using Git method):
-   - Go to **Stacks** → Your stack
-   - Click **Pull and redeploy**
-   - Portainer will pull latest changes and rebuild
-
-2. **Manual Updates**:
-   - Download new repository version
-   - Upload and redeploy stack
-   - Or edit compose file in web editor
-
-#### **📊 Performance Optimization**
-
-**For High Traffic:**
-```yaml
-services:
-  stepdaddylivehd:
-    # ... other config ...
-    environment:
-      - WORKERS=8
-      - PROXY_CONTENT=TRUE
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '2.0'
-        reservations:
-          memory: 1G
-          cpus: '1.0'
-```
-
-**For Low Resource Systems:**
-```yaml
-services:
-  stepdaddylivehd:
-    # ... other config ...
-    environment:
-      - WORKERS=2
-      - PROXY_CONTENT=FALSE
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.5'
-```
-
----
-
-## 🖥️ Local Installation
-
-1. Install Python 🐍 (tested with version 3.12).
-2. Clone the repository and navigate into the project directory:
-   ```bash
-   git clone https://github.com/gookie-dev/StepDaddyLiveHD
-   cd step-daddy-live-hd
-   ```
-3. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-4. Install the dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-5. Initialize Reflex:
-   ```bash
-   reflex init
-   ```
-6. Run the application in production mode:
-   ```bash
-   reflex run --env prod
-   ```
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-StepDaddyLiveHD uses several environment variables to configure its behavior. Here's a detailed explanation of each:
-
-#### **🌐 Network & Server Configuration**
+#### **🔧 Core Configuration**
 
 - **`PORT`** (default: `3232`)
-  - **Purpose**: Sets the port number that Caddy (the reverse proxy) listens on
-  - **Usage**: Change this if port 3232 is already in use on your system
-  - **Example**: `PORT=8080` to run on port 8080
+  - **Purpose**: Sets the public-facing port for the frontend
+  - **Usage**: All user connections and WebSocket communication go through this port
+  - **Example**: `PORT=3232`
 
-- **`API_URL`** (optional)
+- **`BACKEND_PORT`** (default: `8005`)
+  - **Purpose**: Internal port for the backend service
+  - **Note**: This port is used internally and proxied through the frontend port
+  - **Example**: `BACKEND_PORT=8005`
+
+- **`API_URL`** (required for LAN/remote access)
   - **Purpose**: Sets the public URL where your server is accessible
   - **When Required**: 
     - For LAN access: Set to your local IP (e.g., `http://192.168.1.100:3232`)
     - For internet access: Set to your domain (e.g., `https://yourdomain.com`)
   - **Impact**: Affects how URLs are generated in playlists and web interface
   - **Example**: `API_URL=https://iptv.yourdomain.com`
-
-- **`BACKEND_HOST_URI`** (optional)
-  - **Purpose**: Configures a custom backend host URI for advanced setups
-  - **Use Cases**:
-    - Load balancing with multiple backend instances
-    - Custom backend domain/subdomain
-    - Reverse proxy configurations
-  - **Example**: `BACKEND_HOST_URI=http://backend.yourdomain.com:8000`
 
 #### **📺 Content & Streaming Configuration**
 
@@ -293,11 +78,11 @@ StepDaddyLiveHD uses several environment variables to configure its behavior. He
 
 #### **🚀 Performance Configuration**
 
-- **`WORKERS`** (default: `4`)
+- **`WORKERS`** (default: `6`)
   - **Purpose**: Sets the number of worker processes for handling concurrent requests
   - **Recommendations**:
     - **Development**: `WORKERS=1`
-    - **Production**: `WORKERS=4` (default)
+    - **Production**: `WORKERS=6` (default)
     - **High Traffic**: `WORKERS=8` or higher
   - **Impact**: More workers = better concurrent handling but higher resource usage
   - **Example**: `WORKERS=8` for high-traffic deployments
@@ -317,8 +102,8 @@ StepDaddyLiveHD uses several environment variables to configure its behavior. He
 
 #### **🏠 Basic Home Setup**
 ```bash
-# Simple local setup
 PORT=3232
+BACKEND_PORT=8005
 API_URL=http://192.168.1.100:3232
 PROXY_CONTENT=TRUE
 WORKERS=4
@@ -326,8 +111,8 @@ WORKERS=4
 
 #### **🌍 Internet-Facing Server**
 ```bash
-# Production setup with domain
 PORT=3232
+BACKEND_PORT=8005
 API_URL=https://iptv.yourdomain.com
 PROXY_CONTENT=TRUE
 WORKERS=6
@@ -335,18 +120,17 @@ WORKERS=6
 
 #### **🎯 High-Performance Deployment**
 ```bash
-# Optimized for high traffic
 PORT=3232
+BACKEND_PORT=8005
 API_URL=https://iptv.yourdomain.com
-BACKEND_HOST_URI=http://backend.yourdomain.com:8000
 PROXY_CONTENT=TRUE
 WORKERS=8
 ```
 
 #### **🔒 Privacy-Focused Setup**
 ```bash
-# With SOCKS5 proxy for enhanced privacy
 PORT=3232
+BACKEND_PORT=8005
 API_URL=https://iptv.yourdomain.com
 PROXY_CONTENT=TRUE
 WORKERS=4
@@ -355,8 +139,8 @@ SOCKS5=user:password@proxy.example.com:1080
 
 #### **📱 External Players Only**
 ```bash
-# Optimized for VLC/MPV usage (lower server load)
 PORT=3232
+BACKEND_PORT=8005
 API_URL=https://iptv.yourdomain.com
 PROXY_CONTENT=FALSE
 WORKERS=2
@@ -393,78 +177,30 @@ WORKERS=2
   - Check credentials format: `user:password@host:port`
   - Test proxy connectivity separately
 
-### Performance Features
-
-- **Multi-Worker Support**: Configurable worker processes for better concurrent handling
-- **Connection Pooling**: Efficient HTTP connection management
-- **Caching**: Stream and logo caching for improved performance
-- **Rate Limiting**: Built-in protection against overwhelming requests
-- **Health Monitoring**: Real-time health checks and performance metrics
-
-### Environment Variable Examples
-
-**Basic Configuration:**
-```bash
-PORT=3232
-API_URL=http://localhost:3232
-PROXY_CONTENT=TRUE
-WORKERS=4
-```
-
-**Advanced Configuration with Custom Endpoints:**
-```bash
-PORT=3232
-API_URL=https://your-domain.com
-BACKEND_HOST_URI=http://backend.your-domain.com:8000
-DADDYLIVE_URI=https://custom-daddylive.example.com
-PROXY_CONTENT=TRUE
-WORKERS=8
-SOCKS5=127.0.0.1:1080
-```
-
-**High-Performance Configuration:**
-```bash
-PORT=3232
-API_URL=https://your-domain.com
-WORKERS=8
-PROXY_CONTENT=TRUE
-```
-
 ### Example Docker Command
 ```bash
 # Basic setup
-docker build -t step-daddy-live-hd .
-docker run -p 3232:3232 step-daddy-live-hd
-
-# Advanced setup with all options
-docker build \
-  --build-arg PORT=3232 \
-  --build-arg API_URL=https://iptv.yourdomain.com \
-  --build-arg BACKEND_HOST_URI=http://backend.yourdomain.com:8000 \
-  --build-arg DADDYLIVE_URI=https://thedaddy.click \
-  --build-arg PROXY_CONTENT=TRUE \
-  --build-arg WORKERS=8 \
-  --build-arg SOCKS5=user:password@proxy.example.com:1080 \
-  -t step-daddy-live-hd .
-
 docker run \
   -e PORT=3232 \
+  -e BACKEND_PORT=8005 \
+  -e API_URL=http://192.168.1.100:3232 \
+  -e PROXY_CONTENT=TRUE \
+  -e WORKERS=4 \
+  -p 3232:3232 \
+  -p 8005:8005 \
+  step-daddy-live-hd
+
+# Advanced setup with all options
+docker run \
+  -e PORT=3232 \
+  -e BACKEND_PORT=8005 \
   -e API_URL=https://iptv.yourdomain.com \
-  -e BACKEND_HOST_URI=http://backend.yourdomain.com:8000 \
   -e DADDYLIVE_URI=https://thedaddy.click \
   -e PROXY_CONTENT=TRUE \
   -e WORKERS=8 \
   -e SOCKS5=user:password@proxy.example.com:1080 \
   -p 3232:3232 \
-  step-daddy-live-hd
-
-# Minimal setup for external players only
-docker run \
-  -e PORT=3232 \
-  -e API_URL=http://192.168.1.100:3232 \
-  -e PROXY_CONTENT=FALSE \
-  -e WORKERS=2 \
-  -p 3232:3232 \
+  -p 8005:8005 \
   step-daddy-live-hd
 ```
 

@@ -11,11 +11,7 @@ services:
     environment:
       - PORT=${PORT:-3232}
       - BACKEND_PORT=${BACKEND_PORT:-8005}
-      # API_URL is for frontend public access
       - API_URL=${API_URL:-http://192.168.4.5:3232}
-      # REFLEX_API_URL and BACKEND_HOST_URI should match and point to backend port
-      - REFLEX_API_URL=http://192.168.4.5:8005
-      - BACKEND_HOST_URI=http://192.168.4.5:8005
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
