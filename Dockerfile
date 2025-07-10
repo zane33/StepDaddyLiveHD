@@ -55,13 +55,21 @@ ENV PORT=${PORT:-3232} \
 # Download other npm dependencies and compile frontend
 RUN mkdir -p /srv && \
     echo "Building frontend with REFLEX_API_URL=$REFLEX_API_URL" && \
+    echo "Current directory: $(pwd)" && \
+    echo "Node.js version: $(node --version)" && \
+    echo "npm version: $(npm --version)" && \
+    echo "Reflex version: $(reflex --version)" && \
     (reflex export --loglevel debug --frontend-only --no-zip && \
+     echo "Reflex export completed successfully" && \
+     ls -la .web/build/client/ && \
      mv .web/build/client/* /srv/ && \
      rm -rf .web && \
-     echo "Frontend build successful") || \
+     echo "Frontend build successful - contents of /srv:" && \
+     ls -la /srv/) || \
     (echo "Reflex export failed, creating minimal frontend" && \
      mkdir -p /srv && \
-     echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p><p>Check the Docker build logs for more information.</p></body></html>" > /srv/index.html)
+     echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p><p>Check the Docker build logs for more information.</p></body></html>" > /srv/index.html && \
+     echo "Minimal frontend created")
 
 # Final image with only necessary files
 FROM python:3.13-slim

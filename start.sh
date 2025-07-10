@@ -2,6 +2,10 @@
 
 echo "Starting StepDaddyLiveHD services..."
 
+# Set environment variables to prevent frontend compilation at runtime
+export REFLEX_ENV=prod
+export REFLEX_FRONTEND_ONLY=true
+
 # Start Redis in the background
 echo "Starting Redis..."
 redis-server --daemonize yes
@@ -28,5 +32,5 @@ echo "Caddy started successfully"
 WORKERS=${WORKERS:-4}
 echo "Starting Reflex backend with $WORKERS workers..."
 
-# Start the backend with multiple workers using uvicorn directly
-cd /app && exec uvicorn StepDaddyLiveHD.StepDaddyLiveHD:app --host 0.0.0.0 --port 8000 --workers $WORKERS 
+# Start the backend with multiple workers using the backend-only entry point
+cd /app && exec uvicorn StepDaddyLiveHD.backend_app:app --host 0.0.0.0 --port 8000 --workers $WORKERS 

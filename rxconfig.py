@@ -23,6 +23,7 @@ config = rx.Config(
     backend_port=8000,  # Explicitly set backend port to match Caddy configuration
     backend_host_uri=backend_host_uri,  # Allow custom backend host URI
     daddylive_uri=daddylive_uri,  # Allow custom daddylive endpoint URI
+    env=rx.Env.PROD,  # Set to production to prevent runtime compilation
     plugins=[
         rx.plugins.SitemapPlugin(),
         rx.plugins.TailwindV4Plugin(),
