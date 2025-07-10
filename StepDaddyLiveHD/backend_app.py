@@ -1,7 +1,6 @@
 """
 Backend-only entry point for StepDaddyLiveHD.
-This creates a backend app for API endpoints only.
-Real-time communication is handled by Reflex's built-in WebSocket system.
+This creates a backend app for API endpoints and WebSocket communication.
 """
 
 import os
@@ -19,24 +18,26 @@ os.environ["REFLEX_ENV"] = "prod"
 api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
 
 # Import required modules
+import reflex as rx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from StepDaddyLiveHD import backend
+from StepDaddyLiveHD.StepDaddyLiveHD import State
 
-# Create the main FastAPI app
-app = FastAPI(
-    title="StepDaddyLiveHD Backend",
-    description="Backend API for StepDaddyLiveHD",
-    version="1.0.0"
-)
+# Initialize the Reflex app with WebSocket support
+app = rx.App(state=State)
+
+# Get the FastAPI app instance from Reflex
+fastapi_app = app.api.fastapi_app
 
 # Add CORS middleware
-app.add_middleware(
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         api_url,  # Frontend URL from environment
         "http://localhost:3232",     # Local development
         "http://127.0.0.1:3232",    # Alternative local
+        "*",  # Allow all origins for WebSocket
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -45,19 +46,29 @@ app.add_middleware(
 )
 
 # Include all the backend routes
-app.mount("/", backend.fastapi_app)
+fastapi_app.mount("/api", backend.fastapi_app)
 
 # Health check endpoint
-@app.get("/health")
+@fastapi_app.get("/health")
 async def health():
     """Health check endpoint."""
     return {
         "status": "healthy",
         "channels_count": len(backend.step_daddy.channels),
-        "message": "Backend API is running. Real-time features handled by Reflex."
+        "message": "Backend API is running with Reflex WebSocket support."
     }
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("BACKEND_PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port) 
+    # Start the Reflex app with WebSocket support
+    app.compile()
+    uvicorn.run(
+        fastapi_app,
+        host="0.0.0.0",
+        port=port,
+        ws="websockets",  # Enable WebSocket support
+        ws_ping_interval=20,  # Keep connections alive
+        ws_ping_timeout=30,
+        log_level="info"
+    ) 
