@@ -1,25 +1,20 @@
 version: '3.8'
 
 services:
-  stepdaddy:
+  step-daddy-live-hd:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3232:3232"  # Frontend port
-      - "8005:8005"  # Backend port for WebSocket
+      - "${PORT:-3232}:${PORT:-3232}"
+      - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
     environment:
-      - API_URL=http://localhost:3232
-      - BACKEND_PORT=8005
-      - REFLEX_ENV=prod
-      - REFLEX_SKIP_COMPILE=1
-      - CORS_ALLOWED_ORIGINS=*
-    volumes:
-      - ./StepDaddyLiveHD:/app/StepDaddyLiveHD
+      - PORT=${PORT:-3232}
+      - BACKEND_PORT=${BACKEND_PORT:-8005}
+      - API_URL=${API_URL:-http://192.168.4.5:3232}  # Allow override but default to frontend port
+      - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
+      - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
+      - SOCKS5=${SOCKS5:-}
+      - WORKERS=${WORKERS:-6}
+    network_mode: host
     restart: unless-stopped
-    networks:
-      - stepdaddy-net
-
-networks:
-  stepdaddy-net:
-    driver: bridge
