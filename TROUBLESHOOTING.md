@@ -65,6 +65,7 @@ docker exec <container_name> env | grep -E "(PORT|API_URL|DADDYLIVE_URI|PROXY_CO
 
 - `PORT`: The frontend port (default: 3232)
 - `BACKEND_PORT`: The backend service port (default: 8005)
+- `BACKEND_URI`: The backend URI without port i.e. localhost or ip address
 - `API_URL`: The public URL for accessing the service
 - `DADDYLIVE_URI`: The daddylive service endpoint
 - `PROXY_CONTENT`: Whether to proxy video content
@@ -80,12 +81,39 @@ PORT=3232 BACKEND_PORT=8005 API_URL=http://192.168.1.100:3232 docker-compose up
 ### WebSocket Connections
 
 The application uses WebSocket for real-time updates. The connection flow is:
-1. Frontend connects to `ws://[API_URL]/_event`
-2. Caddy proxies the connection to the backend on port 8005
-3. Backend handles the WebSocket connection
+1. Frontend connects to `ws://{API_URL}/_event` (API_URL is your frontend interface, e.g. http://192.168.4.5:3232)
+2. Caddy proxies the WebSocket connection from frontend port (3232) to backend port (8005)
+3. Backend handles the WebSocket connection on port 8005
+
+Note: The API_URL should point to your frontend interface (port 3232) where clients connect. Caddy handles proxying these connections to the backend service (port 8005). Reflex automatically converts http:// to ws:// for WebSocket connections.
 
 If you're having WebSocket connection issues:
 1. Check that both ports (3232 and 8005) are exposed
 2. Verify Caddy is properly proxying WebSocket connections
 3. Check browser console for connection errors
 4. Ensure `API_URL` is correctly set to your server's address 
+
+# Check environment variables in the container
+To see what environment variables are set in the running container:
+
+```bash
+docker exec stepdaddylivehd-step-daddy-live-hd-1 env | findstr "PORT API_URL BACKEND_URI DADDYLIVE_URI PROXY_CONTENT SOCKS5 WORKERS BACKEND_PORT WEBSOCKET_URL REFLEX_ENV REFLEX_FRONTEND_ONLY REFLEX_SKIP_COMPILE REDIS_URL PYTHONUNBUFFERED"
+```
+
+Example output:
+```
+API_URL=http://localhost:8005
+BACKEND_URI=http://localhost:8005
+DADDYLIVE_URI=https://thedaddy.click
+SOCKS5=
+PROXY_CONTENT=TRUE
+PORT=3232
+WORKERS=4
+BACKEND_PORT=8005
+WEBSOCKET_URL=ws://localhost:8005
+REFLEX_ENV=prod
+REFLEX_FRONTEND_ONLY=true
+REFLEX_SKIP_COMPILE=1
+REDIS_URL=redis://localhost
+PYTHONUNBUFFERED=1
+``` 

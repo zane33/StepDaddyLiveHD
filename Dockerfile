@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     gnupg \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js and npm
@@ -28,15 +29,16 @@ RUN pip install -r requirements.txt
 # Copy local context to `/app` inside container (see .dockerignore)
 COPY . .
 
-# Make startup script executable
-RUN chmod +x /app/start.sh
+# Convert start.sh to Unix line endings and make it executable
+RUN dos2unix /app/start.sh && chmod +x /app/start.sh
 
 ARG PORT BACKEND_PORT API_URL DADDYLIVE_URI PROXY_CONTENT SOCKS5
 
 # Set environment variables for the build
 ENV PORT=${PORT:-3232} \
     BACKEND_PORT=${BACKEND_PORT:-8005} \
-    API_URL=${API_URL:-http://192.168.4.5:3232} \
+    BACKEND_URI=${BACKEND_URI:-http://localhost:${BACKEND_PORT:-8005}} \
+    API_URL=${API_URL:-http://localhost:${PORT:-3232}} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
     SOCKS5=${SOCKS5:-""} \
@@ -74,6 +76,7 @@ RUN apt-get update -y && apt-get install -y \
     redis-server \
     curl \
     gnupg \
+    dos2unix \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -85,7 +88,8 @@ ARG PORT BACKEND_PORT API_URL DADDYLIVE_URI PROXY_CONTENT SOCKS5
 ENV PATH="/app/.venv/bin:$PATH" \
     PORT=${PORT:-3232} \
     BACKEND_PORT=${BACKEND_PORT:-8005} \
-    API_URL=${API_URL:-http://192.168.4.5:3232} \
+    BACKEND_URI=${BACKEND_URI:-http://localhost:${BACKEND_PORT:-8005}} \
+    API_URL=${API_URL:-http://localhost:${PORT:-3232}} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     REDIS_URL=redis://localhost \
     PYTHONUNBUFFERED=1 \
@@ -99,6 +103,9 @@ ENV PATH="/app/.venv/bin:$PATH" \
 WORKDIR /app
 COPY --from=builder /app /app
 COPY --from=builder /srv /srv
+
+# Convert start.sh to Unix line endings and make it executable in the final image
+RUN dos2unix /app/start.sh && chmod +x /app/start.sh
 
 # Needed until Reflex properly passes SIGTERM on backend.
 STOPSIGNAL SIGKILL

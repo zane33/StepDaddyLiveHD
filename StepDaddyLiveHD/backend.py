@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Get environment variables
-api_url = os.environ.get("API_URL", "http://192.168.4.5:3232")
+api_url = os.environ.get("API_URL", "http://localhost:3232")
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
 
 # Parse API_URL to create WebSocket URL with backend port

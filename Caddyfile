@@ -6,7 +6,7 @@ header {
     # Enable CORS
     Access-Control-Allow-Origin *
     Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
+    Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
     
     # Security headers
     X-Content-Type-Options nosniff
@@ -23,27 +23,71 @@ handle @cors_preflight {
     header {
         Access-Control-Allow-Origin *
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization"
+        Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
         Access-Control-Max-Age 86400
     }
     respond 204
 }
 
-# All backend routes including WebSocket and API
-handle_path /* {
+# Handle WebSocket events with proper upgrade
+@websocket {
+    path /_event*
+    header Connection *Upgrade*
+    header Upgrade websocket
+}
+
+handle @websocket {
     reverse_proxy 0.0.0.0:{$BACKEND_PORT} {
         transport http {
-            versions h1
+            versions h1  # Force HTTP/1.1 for WebSocket support
+            keepalive 30s
+            keepalive_idle_conns 10
         }
         header_up Host {http.request.host}
         header_up X-Real-IP {http.request.remote.host}
-        header_up X-Forwarded-For {http.request.remote.host}
-        header_up X-Forwarded-Proto {http.request.scheme}
+        header_up Connection {http.request.header.Connection}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Sec-WebSocket-Protocol {http.request.header.Sec-WebSocket-Protocol}
+        header_up Sec-WebSocket-Key {http.request.header.Sec-WebSocket-Key}
+        header_up Sec-WebSocket-Version {http.request.header.Sec-WebSocket-Version}
     }
 }
 
+# Handle direct backend routes (stream, key, content, etc.)
+handle_path /stream/* {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+handle_path /key/* {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+handle_path /content/* {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+handle_path /logo/* {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+handle_path /playlist.m3u8 {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+# Handle health check endpoint directly
+handle /health {
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+# Handle API routes
+handle_path /api/* {
+    uri strip_prefix /api
+    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+}
+
+# Serve static files and handle SPA routing
 handle {
     root * /srv
-    try_files {path} {path}/ /404.html
+    try_files {path} {path}/ /index.html
     file_server
 }

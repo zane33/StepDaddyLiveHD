@@ -11,7 +11,8 @@ services:
     environment:
       - PORT=${PORT:-3232}
       - BACKEND_PORT=${BACKEND_PORT:-8005}
-      - API_URL=${API_URL:-http://localhost:3232}  # Changed to localhost for local development
+      - BACKEND_URI=${BACKEND_URI:-http://localhost:${BACKEND_PORT:-8005}}
+      - API_URL=${API_URL}  # Let rxconfig.py handle the default
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}

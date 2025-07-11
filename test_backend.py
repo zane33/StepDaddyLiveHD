@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 client = TestClient(fastapi_app)
 
 # Use the backend port for testing
-base_url = os.environ.get("API_URL", "http://localhost:8005")
+base_url = os.environ.get("BACKEND_URI", "http://localhost:8005")
 
 def test_health():
     response = client.get("/health")

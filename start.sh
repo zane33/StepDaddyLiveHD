@@ -18,6 +18,22 @@ until redis-cli ping &>/dev/null; do
 done
 echo "Redis started successfully"
 
+# Get number of workers from environment or use default
+WORKERS=${WORKERS:-6}
+# Get backend port from environment or use default
+BACKEND_PORT=${BACKEND_PORT:-8005}
+echo "Starting Reflex backend with $WORKERS workers on port $BACKEND_PORT..."
+
+# Start the backend with multiple workers using the FastAPI app
+cd /app && uvicorn StepDaddyLiveHD.backend_app:fastapi_app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS &
+
+# Wait for backend to be ready
+echo "Waiting for backend..."
+until curl -s http://localhost:$BACKEND_PORT/health &>/dev/null; do
+    sleep 1
+done
+echo "Backend started successfully"
+
 # Start Caddy
 echo "Starting Caddy..."
 caddy start
@@ -29,11 +45,5 @@ until curl -s http://localhost:2019/config/ &>/dev/null; do
 done
 echo "Caddy started successfully"
 
-# Get number of workers from environment or use default
-WORKERS=${WORKERS:-6}
-# Get backend port from environment or use default
-BACKEND_PORT=${BACKEND_PORT:-8005}
-echo "Starting Reflex backend with $WORKERS workers on port $BACKEND_PORT..."
-
-# Start the backend with multiple workers using the FastAPI app
-cd /app && exec uvicorn StepDaddyLiveHD.backend_app:fastapi_app --host 0.0.0.0 --port $BACKEND_PORT --workers $WORKERS 
+# Keep the script running
+wait 
