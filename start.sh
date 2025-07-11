@@ -2,6 +2,22 @@
 
 echo "Starting StepDaddyLiveHD services..."
 
+# Check internet connectivity
+echo "Checking internet connectivity..."
+if ! curl -s --connect-timeout 5 https://8.8.8.8 >/dev/null; then
+    echo "Warning: Cannot reach internet (IP connectivity test failed)"
+fi
+
+if ! curl -s --connect-timeout 5 https://www.google.com >/dev/null; then
+    echo "Warning: Cannot resolve DNS (DNS resolution test failed)"
+fi
+
+# Test connection to DADDYLIVE_URI
+echo "Testing connection to content provider..."
+if ! curl -s --connect-timeout 10 "${DADDYLIVE_URI:-https://thedaddy.click}" >/dev/null; then
+    echo "Warning: Cannot connect to content provider at ${DADDYLIVE_URI:-https://thedaddy.click}"
+fi
+
 # Set environment variables to prevent frontend compilation at runtime
 export REFLEX_ENV=prod
 export REFLEX_FRONTEND_ONLY=true
@@ -34,16 +50,6 @@ until curl -s http://localhost:$BACKEND_PORT/health &>/dev/null; do
 done
 echo "Backend started successfully"
 
-# Start Caddy
+# Start Caddy in the foreground with explicit configuration
 echo "Starting Caddy..."
-caddy start
-
-# Wait for Caddy to be ready
-echo "Waiting for Caddy..."
-until curl -s http://localhost:2019/config/ &>/dev/null; do
-    sleep 1
-done
-echo "Caddy started successfully"
-
-# Keep the script running
-wait 
+exec caddy run --config /app/Caddyfile --adapter caddyfile 

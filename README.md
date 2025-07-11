@@ -514,3 +514,14 @@ This architecture ensures scalable, real-time performance using Reflex's reactiv
 ## 📚 Hosting Options
 
 Check out the [official Reflex hosting documentation](https://reflex.dev/docs/hosting/self-hosting/) for more advanced self-hosting setups!
+
+### 🔒 Security Configuration
+
+For detailed security configuration and best practices, including Content Security Policy (CSP), reverse proxy setup, and network security, please refer to [SECURITY.md](SECURITY.md).
+
+Key security features:
+- Content Security Policy (CSP) configuration
+- Reverse proxy security with Caddy
+- CORS and WebSocket security
+- Rate limiting and DDoS protection
+- Development vs Production security modes

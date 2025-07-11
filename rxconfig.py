@@ -35,4 +35,23 @@ config = rx.Config(
     daddylive_uri=daddylive_uri,
     proxy_content=proxy_content,
     socks5=socks5,
+    # Configure CSP headers for development and production
+    frontend_headers={
+        "Content-Security-Policy": (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline'; "  # Required for Reflex and video player
+            "style-src 'self' 'unsafe-inline'; "  # Required for styled-components
+            "img-src 'self' data: https:; "  # Allow images from HTTPS sources
+            "media-src 'self' blob: *; "  # Required for video streaming
+            "connect-src 'self' ws: wss: *; "  # Required for WebSocket and API
+            "worker-src 'self' blob:; "  # Required for video processing
+            "frame-src 'self' *; "  # Required for video iframes
+            "font-src 'self' data:; "  # Allow fonts
+        ),
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+    }
 )

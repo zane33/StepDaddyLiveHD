@@ -1,20 +1,28 @@
 :{$PORT}
 
-encode gzip
+log {
+    format json
+    level DEBUG
+}
 
+# Basic settings
+encode gzip
+root * /srv
+
+# Global headers
 header {
     # Enable CORS
     Access-Control-Allow-Origin *
     Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
     
-    # Security headers
+    # Security headers with CSP
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: *; connect-src 'self' ws: wss: *; worker-src 'self' blob:; frame-src 'self' *; font-src 'self' data:;"
     X-Content-Type-Options nosniff
     X-Frame-Options DENY
     X-XSS-Protection "1; mode=block"
-    
-    # Performance headers
-    X-Process-Time {http.response.header.X-Process-Time}
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
 }
 
 # Handle CORS preflight requests
@@ -29,7 +37,7 @@ handle @cors_preflight {
     respond 204
 }
 
-# Handle WebSocket events with proper upgrade
+# Handle WebSocket events
 @websocket {
     path /_event*
     header Connection *Upgrade*
@@ -37,57 +45,42 @@ handle @cors_preflight {
 }
 
 handle @websocket {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT} {
-        transport http {
-            versions h1  # Force HTTP/1.1 for WebSocket support
-            keepalive 30s
-            keepalive_idle_conns 10
-        }
-        header_up Host {http.request.host}
-        header_up X-Real-IP {http.request.remote.host}
-        header_up Connection {http.request.header.Connection}
-        header_up Upgrade {http.request.header.Upgrade}
-        header_up Sec-WebSocket-Protocol {http.request.header.Sec-WebSocket-Protocol}
-        header_up Sec-WebSocket-Key {http.request.header.Sec-WebSocket-Key}
-        header_up Sec-WebSocket-Version {http.request.header.Sec-WebSocket-Version}
-    }
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
-# Handle direct backend routes (stream, key, content, etc.)
+# Handle backend routes
+handle_path /api/* {
+    uri strip_prefix /api
+    reverse_proxy localhost:{$BACKEND_PORT}
+}
+
 handle_path /stream/* {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /key/* {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /content/* {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /logo/* {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /playlist.m3u8 {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
-# Handle health check endpoint directly
 handle /health {
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
+    reverse_proxy localhost:{$BACKEND_PORT}
 }
 
-# Handle API routes
-handle_path /api/* {
-    uri strip_prefix /api
-    reverse_proxy 0.0.0.0:{$BACKEND_PORT}
-}
-
-# Serve static files and handle SPA routing
+# Handle all other requests
 handle {
-    root * /srv
-    try_files {path} {path}/ /index.html
+    # Try static files first
+    try_files {path} /index.html
     file_server
 }

@@ -16,10 +16,11 @@ class State(rx.State):
     search_query: str = ""
     
     # Real-time status
-    is_loading: bool = False
+    is_loading: bool = True  # Start with loading state
     last_update: str = ""
     connection_status: str = "connecting"
     channels_count: int = 0
+    error_message: str = ""  # Track error messages
     
     # Live updates
     auto_refresh: bool = True
@@ -50,16 +51,23 @@ class State(rx.State):
         elif self.connection_status == "connecting":
             return "Connecting to server..."
         else:
-            return "Connection failed"
+            return f"Connection failed{' • ' + self.error_message if self.error_message else ''}"
     
     async def load_channels(self):
         """Load channels from backend with real-time updates."""
         self.is_loading = True
         self.connection_status = "connecting"
+        self.error_message = ""
         
         try:
             # Load channels from backend
             self.channels = backend.get_channels()
+            
+            if not self.channels:
+                self.connection_status = "error"
+                self.error_message = "No channels available"
+                return
+                
             self.channels_count = len(self.channels)
             self.connection_status = "connected"
             self.last_update = time.strftime("%H:%M:%S")
@@ -84,6 +92,7 @@ class State(rx.State):
                     
         except Exception as e:
             self.connection_status = "error"
+            self.error_message = str(e)
             # Try to load from fallback
             try:
                 import json
@@ -94,6 +103,9 @@ class State(rx.State):
                         self.channels = [Channel(**channel_data) for channel_data in fallback_data]
                         self.channels_count = len(self.channels)
                         self.last_update = "from cache"
+                        if self.channels:
+                            self.connection_status = "connected"
+                            self.error_message = "Using cached data"
             except Exception:
                 pass
         
@@ -139,6 +151,7 @@ class State(rx.State):
                 return State.handle_channel_update
         except Exception as e:
             self.connection_status = "error"
+            self.error_message = str(e)
             # Don't raise the exception - just log it and continue
             print(f"Channel update error: {str(e)}")
             # Retry after error with backoff

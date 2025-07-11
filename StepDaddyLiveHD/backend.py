@@ -38,8 +38,8 @@ fastapi_app.add_middleware(
     allow_origins=[
         api_url,  # Frontend URL from environment
         ws_url,   # WebSocket URL with backend port
-        "http://localhost:3232",     # Local development frontend
-        f"http://localhost:{backend_port}",  # Local development backend
+        "http://0.0.0.0:3232",     # Local development frontend
+        f"http://0.0.0.0:{backend_port}",  # Local development backend
         "http://127.0.0.1:3232",    # Alternative local frontend
         f"http://127.0.0.1:{backend_port}",  # Alternative local backend
         "*",  # Allow all origins for WebSocket
@@ -173,6 +173,11 @@ async def update_channels():
         try:
             logger.info("Loading channels...")
             await step_daddy.load_channels()
+            
+            # Verify channels were actually loaded
+            if not step_daddy.channels:
+                raise Exception("No channels loaded from primary source")
+                
             logger.info(f"Successfully loaded {len(step_daddy.channels)} channels")
             # Clear stream cache when channels are updated
             stream_cache.clear()
@@ -189,20 +194,37 @@ async def update_channels():
                     with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
                         fallback_data = json.load(f)
                         step_daddy.channels = [Channel(**channel_data) for channel_data in fallback_data]
+                    if not step_daddy.channels:
+                        raise Exception("No channels loaded from fallback")
                     logger.info(f"Loaded {len(step_daddy.channels)} channels from fallback")
+                else:
+                    logger.error("No fallback file found at StepDaddyLiveHD/fallback_channels.json")
             except Exception as fallback_error:
                 logger.error(f"Fallback loading also failed: {str(fallback_error)}")
             # Continue running but wait a bit longer before retrying
-            await asyncio.sleep(600)  # Wait 10 minutes before retrying
+            await asyncio.sleep(60)  # Wait 1 minute before retrying on initial load, 10 minutes on subsequent failures
 
 @lru_cache(maxsize=1)
 def get_channels():
-    return step_daddy.channels
+    """Get current channels with fallback handling."""
+    channels = step_daddy.channels
+    if not channels:
+        # Try loading from fallback synchronously if no channels available
+        try:
+            if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
+                with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
+                    fallback_data = json.load(f)
+                    channels = [Channel(**channel_data) for channel_data in fallback_data]
+                logger.info(f"Loaded {len(channels)} channels from fallback in get_channels()")
+        except Exception as e:
+            logger.error(f"Error loading fallback in get_channels(): {str(e)}")
+    return channels
 
 def get_channel(channel_id) -> Optional[Channel]:
     if not channel_id or channel_id == "":
         return None
-    return next((channel for channel in step_daddy.channels if channel.id == channel_id), None)
+    channels = get_channels()  # Use get_channels() to ensure fallback handling
+    return next((channel for channel in channels if channel.id == channel_id), None)
 
 @fastapi_app.get("/playlist.m3u8")
 def playlist():
