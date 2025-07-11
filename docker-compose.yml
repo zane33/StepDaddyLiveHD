@@ -11,10 +11,18 @@ services:
     environment:
       - PORT=${PORT:-3232}
       - BACKEND_PORT=${BACKEND_PORT:-8005}
-      - API_URL=${API_URL:-http://192.168.4.5:3232}  # Allow override but default to frontend port
+      - API_URL=${API_URL:-http://localhost:3232}  # Changed to localhost for local development
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
       - WORKERS=${WORKERS:-6}
-    network_mode: host
+      - REFLEX_ENV=prod
+      - REFLEX_FRONTEND_ONLY=true
+      - REFLEX_SKIP_COMPILE=1
+    networks:
+      - step-daddy-network
     restart: unless-stopped
+
+networks:
+  step-daddy-network:
+    driver: bridge
