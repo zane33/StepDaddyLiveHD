@@ -20,22 +20,31 @@ class State(rx.State):
     last_update: str = ""
     connection_status: str = "connecting"
     channels_count: int = 0
+    filtered_channels_count: int = 0
     error_message: str = ""  # Track error messages
     
     # Live updates
     auto_refresh: bool = True
     refresh_interval: int = 300  # 5 minutes
     
+    # WebSocket state
+    ws_connected: bool = False
+    
     @rx.var
     def filtered_channels(self) -> List[Channel]:
         """Filter channels based on search query."""
         if not self.search_query:
-            return self.channels
-        return [ch for ch in self.channels if self.search_query.lower() in ch.name.lower()]
+            filtered = self.channels
+        else:
+            filtered = [ch for ch in self.channels if self.search_query.lower() in ch.name.lower()]
+        self.filtered_channels_count = len(filtered)
+        return filtered
     
     @rx.var
     def status_color(self) -> str:
         """Get color for connection status indicator."""
+        if not self.ws_connected:
+            return "red"
         if self.connection_status == "connected":
             return "green"
         elif self.connection_status == "connecting":
@@ -46,6 +55,8 @@ class State(rx.State):
     @rx.var
     def status_text(self) -> str:
         """Get formatted status text."""
+        if not self.ws_connected:
+            return "WebSocket disconnected - trying to reconnect..."
         if self.connection_status == "connected":
             return f"Connected • {self.channels_count} channels • Updated {self.last_update}"
         elif self.connection_status == "connecting":
@@ -61,13 +72,14 @@ class State(rx.State):
         
         try:
             # Load channels from backend
-            self.channels = backend.get_channels()
+            channels = backend.get_channels()
             
-            if not self.channels:
+            if not channels:
                 self.connection_status = "error"
-                self.error_message = "No channels available"
+                self.error_message = "No channels available. Please try again later."
                 return
                 
+            self.channels = channels
             self.channels_count = len(self.channels)
             self.connection_status = "connected"
             self.last_update = time.strftime("%H:%M:%S")
@@ -81,10 +93,10 @@ class State(rx.State):
                         "id": ch.id,
                         "name": ch.name,
                         "logo": ch.logo,
-                        "category": ch.category,
+                        "tags": ch.tags,
                         "is_live": getattr(ch, 'is_live', True)
                     }
-                    for ch in self.channels[:10]  # Save first 10 as fallback
+                    for ch in self.channels  # Save all channels as fallback
                 ]
                 os.makedirs("StepDaddyLiveHD", exist_ok=True)
                 with open("StepDaddyLiveHD/fallback_channels.json", "w") as f:
@@ -92,7 +104,7 @@ class State(rx.State):
                     
         except Exception as e:
             self.connection_status = "error"
-            self.error_message = str(e)
+            self.error_message = f"Error loading channels: {str(e)}"
             # Try to load from fallback
             try:
                 import json
@@ -105,41 +117,61 @@ class State(rx.State):
                         self.last_update = "from cache"
                         if self.channels:
                             self.connection_status = "connected"
-                            self.error_message = "Using cached data"
-            except Exception:
-                pass
+                            self.error_message = "Using cached data - some features may be limited"
+            except Exception as fallback_error:
+                self.error_message = f"Failed to load channels (both live and cached): {str(fallback_error)}"
         
         finally:
             self.is_loading = False
     
-    async def refresh_channels(self):
-        """Manually refresh channels."""
-        await self.load_channels()
+    @rx.event
+    def handle_websocket_connect(self):
+        """Handle WebSocket connection."""
+        self.ws_connected = True
+        return self.load_channels
     
-    async def toggle_auto_refresh(self):
+    @rx.event
+    def handle_websocket_disconnect(self):
+        """Handle WebSocket disconnection."""
+        self.ws_connected = False
+        self.connection_status = "error"
+        self.error_message = "WebSocket disconnected"
+    
+    @rx.event
+    def handle_websocket_error(self, error: str):
+        """Handle WebSocket error."""
+        self.connection_status = "error"
+        self.error_message = f"WebSocket error: {error}"
+    
+    @rx.event
+    def refresh_channels(self):
+        """Manually refresh channels."""
+        return self.load_channels
+    
+    @rx.event
+    def toggle_auto_refresh(self):
         """Toggle automatic refresh."""
         self.auto_refresh = not self.auto_refresh
         if self.auto_refresh:
             # Start background refresh
-            return State.start_background_refresh
+            return self.start_background_refresh
     
     async def start_background_refresh(self):
         """Start background refresh task."""
-        while self.auto_refresh:
+        while self.auto_refresh and self.ws_connected:
             await asyncio.sleep(self.refresh_interval)
-            if self.auto_refresh:  # Check again in case it was disabled
+            if self.auto_refresh and self.ws_connected:  # Check again in case it was disabled
                 await self.load_channels()
     
-    async def search_channels(self, query: str):
+    @rx.event
+    def search_channels(self, query: str):
         """Handle search with real-time filtering."""
         self.search_query = query
     
-    async def on_load(self):
+    @rx.event
+    def on_load(self):
         """Initial load when page loads."""
-        await self.load_channels()
-        if self.auto_refresh:
-            # Start background refresh task
-            return State.start_background_refresh
+        return self.load_channels
 
     async def handle_channel_update(self):
         """Handle real-time channel updates."""
@@ -239,7 +271,7 @@ def channels_grid() -> rx.Component:
     """Channels grid with loading states."""
     return rx.center(
         rx.cond(
-            State.is_loading & (State.channels.length() == 0),
+            State.is_loading & (State.channels_count == 0),
             rx.vstack(
                 rx.spinner(size="3"),
                 rx.text("Loading channels...", size="2", color="gray"),
@@ -247,13 +279,13 @@ def channels_grid() -> rx.Component:
                 align="center",
             ),
             rx.cond(
-                State.filtered_channels.length() > 0,
+                State.filtered_channels_count > 0,
                 rx.vstack(
                     rx.text(
                         rx.cond(
                             State.search_query != "",
-                            f"Found {State.filtered_channels.length()} channels matching '{State.search_query}'",
-                            f"Showing {State.filtered_channels.length()} channels",
+                            f"Found {State.filtered_channels_count} channels matching '{State.search_query}'",
+                            f"Showing {State.filtered_channels_count} channels",
                         ),
                         size="2",
                         color="gray",

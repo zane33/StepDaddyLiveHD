@@ -13,195 +13,134 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 
 ---
 
-## 🐳 Docker Installation (Recommended)
+## 📦 Dependencies
 
-> ⚠️ **Important:** If you plan to use this application across your local network (LAN), you must set `API_URL` to the **local IP address** of the device hosting the server.
+StepDaddyLiveHD relies on several key Python packages, each serving a specific purpose in the application:
 
-### Option 1: Docker Compose (Command Line)
-1. Make sure you have Docker and Docker Compose installed on your system.
-2. Clone the repository and navigate into the project directory:
-3. Run the following command to start the application:
-   ```bash
-   docker compose up -d
-   ```
+### Core Dependencies
 
-### Option 2: Plain Docker (Command Line)
-```bash
-docker build -t step-daddy-live-hd .
-docker run -p 3232:3232 -p 8005:8005 step-daddy-live-hd
+- **`reflex==0.8.0`**
+  - Primary web framework for building the full-stack application
+  - Handles both frontend and backend, compiling Python to React
+  - Provides real-time state management and WebSocket communication
+  - Used for: UI components, state management, routing, and real-time updates
+
+- **`curl-cffi==0.11.4`**
+  - High-performance HTTP client with CFFI bindings
+  - Supports advanced features like HTTP/2 and connection pooling
+  - Used for: Fetching channel data and stream information with optimal performance
+
+- **`httpx[http2]==0.28.1`**
+  - Modern HTTP client with HTTP/2 support
+  - Provides both sync and async APIs
+  - Used for: Making HTTP requests to external services and handling stream proxying
+
+### Backend Server
+
+- **`uvicorn[standard]==0.32.1`**
+  - Lightning-fast ASGI server implementation
+  - Provides production-ready features with the [standard] extras
+  - Used for: Serving the backend application with WebSocket support
+
+- **`fastapi==0.115.6`**
+  - Modern, fast web framework for building APIs
+  - Provides automatic OpenAPI documentation
+  - Used for: Backend API endpoints and WebSocket handling
+
+### Utilities
+
+- **`python-dateutil==2.9.0`**
+  - Powerful extensions to Python's datetime module
+  - Used for: Handling timestamps and schedule information
+
+- **`aiohttp==3.10.11`**
+  - Asynchronous HTTP client/server framework
+  - Used for: Async HTTP requests and WebSocket communication
+
+## 🐳 Docker Configuration
+
+The application uses a multi-stage Docker build for optimal image size and security. Here's a breakdown of the Docker setup:
+
+### Dockerfile Structure
+
+```dockerfile
+# Build stage
+FROM python:3.13 AS builder
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    gnupg
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+# Set up Python virtual environment
+RUN python -m venv /app/.venv
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+# Build frontend
+COPY . .
+RUN npm install && npm run build
+
+# Runtime stage
+FROM python:3.13-slim
+# Install runtime dependencies
+RUN apt-get update -y && apt-get install -y \
+    caddy \
+    redis-server
+# Copy built application
+COPY --from=builder /app /app
+COPY --from=builder /srv /srv
+# Configure entrypoint
+RUN chmod +x /app/start.sh
+CMD ["/app/start.sh"]
 ```
 
-### Configuration Variables
+### Docker Compose Configuration
 
-#### **🔧 Core Configuration**
+The `docker-compose.yml` file provides a production-ready setup with:
 
-- **`PORT`** (default: `3232`)
-  - **Purpose**: Sets the public-facing port for the frontend
-  - **Usage**: All user connections and WebSocket communication go through this port
-  - **Example**: `PORT=3232`
+- **Network Configuration**:
+  - Exposed ports for frontend and backend
+  - Internal Docker network for service communication
+  - DNS configuration for reliable name resolution
 
-- **`BACKEND_PORT`** (default: `8005`)
-  - **Purpose**: Internal port for the backend service
-  - **Note**: This port is used internally and proxied through the frontend port
-  - **Example**: `BACKEND_PORT=8005`
+- **Environment Variables**:
+  - Flexible configuration through environment variables
+  - Default values for quick deployment
+  - Support for proxy settings
 
-- **`API_URL`** (required for LAN/remote access)
-  - **Purpose**: Sets the public URL where your server is accessible
-  - **When Required**: 
-    - For LAN access: Set to your local IP (e.g., `http://192.168.1.100:3232`)
-    - For internet access: Set to your domain (e.g., `https://yourdomain.com`)
-  - **Impact**: Affects how URLs are generated in playlists and web interface
-  - **Example**: `API_URL=https://iptv.yourdomain.com`
+- **Resource Management**:
+  - Automatic container restart
+  - Network access control
+  - Host machine access when needed
 
-#### **📺 Content & Streaming Configuration**
-
-- **`DADDYLIVE_URI`** (default: `https://thedaddy.click`)
-  - **Purpose**: Sets the endpoint URI for the daddylive service
-  - **Use Cases**:
-    - Point to alternative daddylive servers
-    - Use custom daddylive instances
-    - Backup/mirror servers
-  - **Example**: `DADDYLIVE_URI=https://custom-daddylive.example.com`
-
-- **`PROXY_CONTENT`** (default: `TRUE`)
-  - **Purpose**: Controls whether video content is proxied through your server
-  - **When `TRUE`** (recommended for web usage):
-    - ✅ Web players work without CORS issues
-    - ✅ Original video URLs are hidden from clients
-    - ✅ Better privacy and control
-    - ⚠️ Higher server bandwidth usage
-  - **When `FALSE`** (for external players only):
-    - ✅ Lower server load and bandwidth usage
-    - ❌ Web players may not work due to CORS
-    - ❌ Original URLs are exposed to clients
-  - **Example**: `PROXY_CONTENT=FALSE` for VLC/MPV only usage
-
-#### **🚀 Performance Configuration**
-
-- **`WORKERS`** (default: `6`)
-  - **Purpose**: Sets the number of worker processes for handling concurrent requests
-  - **Recommendations**:
-    - **Development**: `WORKERS=1`
-    - **Production**: `WORKERS=6` (default)
-    - **High Traffic**: `WORKERS=8` or higher
-  - **Impact**: More workers = better concurrent handling but higher resource usage
-  - **Example**: `WORKERS=8` for high-traffic deployments
-
-#### **🔒 Network & Security Configuration**
-
-- **`SOCKS5`** (optional)
-  - **Purpose**: Routes all daddylive traffic through a SOCKS5 proxy
-  - **Use Cases**:
-    - Bypass regional restrictions
-    - Enhanced privacy
-    - Network routing requirements
-  - **Format**: `host:port` or `user:password@host:port`
-  - **Example**: `SOCKS5=127.0.0.1:1080` or `SOCKS5=user:pass@proxy.example.com:1080`
-
-### Configuration Examples
-
-#### **🏠 Basic Home Setup**
-```bash
-PORT=3232
-BACKEND_PORT=8005
-API_URL=http://192.168.1.100:3232
-PROXY_CONTENT=TRUE
-WORKERS=4
-```
-
-#### **🌍 Internet-Facing Server**
-```bash
-PORT=3232
-BACKEND_PORT=8005
-API_URL=https://iptv.yourdomain.com
-PROXY_CONTENT=TRUE
-WORKERS=6
-```
-
-#### **🎯 High-Performance Deployment**
-```bash
-PORT=3232
-BACKEND_PORT=8005
-API_URL=https://iptv.yourdomain.com
-PROXY_CONTENT=TRUE
-WORKERS=8
-```
-
-#### **🔒 Privacy-Focused Setup**
-```bash
-PORT=3232
-BACKEND_PORT=8005
-API_URL=https://iptv.yourdomain.com
-PROXY_CONTENT=TRUE
-WORKERS=4
-SOCKS5=user:password@proxy.example.com:1080
-```
-
-#### **📱 External Players Only**
-```bash
-PORT=3232
-BACKEND_PORT=8005
-API_URL=https://iptv.yourdomain.com
-PROXY_CONTENT=FALSE
-WORKERS=2
-```
-
-### 🔧 Common Configuration Issues
-
-#### **Web Player Not Working**
-- **Problem**: CORS errors or video not loading
-- **Solution**: Ensure `PROXY_CONTENT=TRUE` is set
-- **Alternative**: Use external players like VLC/MPV
-
-#### **Can't Access from Other Devices**
-- **Problem**: Only accessible from localhost
-- **Solution**: Set `API_URL` to your local IP address
-- **Example**: `API_URL=http://192.168.1.100:3232`
-
-#### **High Server Load**
-- **Problem**: Server becomes slow with multiple users
-- **Solutions**:
-  - Increase `WORKERS` (try 6-8)
-  - Set `PROXY_CONTENT=FALSE` if using external players only
-  - Monitor system resources
-
-#### **Playlist URLs Not Working**
-- **Problem**: Playlist links point to wrong address
-- **Solution**: Ensure `API_URL` is set correctly
-- **Check**: URLs in `/playlist.m3u8` should match your server
-
-#### **SOCKS5 Proxy Issues**
-- **Problem**: Connection failures with proxy
-- **Solutions**:
-  - Verify proxy server is running
-  - Check credentials format: `user:password@host:port`
-  - Test proxy connectivity separately
-
-### Example Docker Command
-```bash
-# Basic setup
-docker run \
-  -e PORT=3232 \
-  -e BACKEND_PORT=8005 \
-  -e API_URL=http://192.168.1.100:3232 \
-  -e PROXY_CONTENT=TRUE \
-  -e WORKERS=4 \
-  -p 3232:3232 \
-  -p 8005:8005 \
-  step-daddy-live-hd
-
-# Advanced setup with all options
-docker run \
-  -e PORT=3232 \
-  -e BACKEND_PORT=8005 \
-  -e API_URL=https://iptv.yourdomain.com \
-  -e DADDYLIVE_URI=https://thedaddy.click \
-  -e PROXY_CONTENT=TRUE \
-  -e WORKERS=8 \
-  -e SOCKS5=user:password@proxy.example.com:1080 \
-  -p 3232:3232 \
-  -p 8005:8005 \
-  step-daddy-live-hd
+Example `docker-compose.yml`:
+```yaml
+version: '3.8'
+services:
+  step-daddy-live-hd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3232}:${PORT:-3232}"
+      - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
+      - "2019:2019"  # Caddy admin port
+    environment:
+      - PORT=${PORT:-3232}
+      - BACKEND_PORT=${BACKEND_PORT:-8005}
+      - API_URL=http://localhost:${PORT:-3232}
+      - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
+      - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
+      - SOCKS5=${SOCKS5:-}
+      - WORKERS=${WORKERS:-6}
+    networks:
+      step-daddy-network:
+        aliases:
+          - step-daddy-live-hd
+    restart: unless-stopped
 ```
 
 ---

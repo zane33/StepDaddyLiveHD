@@ -9,6 +9,11 @@ from typing import List
 from .utils import encrypt, decrypt, urlsafe_base64, extract_and_decode_var
 from rxconfig import config
 
+# Set up logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -54,20 +59,25 @@ class StepDaddy:
         async with self._load_lock:
             channels = []
             try:
-                logger.info(f"Fetching channels from {self._base_url}/24-7-channels.php")
+                logger.debug(f"Starting channel load from {self._base_url}/24-7-channels.php")
                 response = await self._session.get(f"{self._base_url}/24-7-channels.php", headers=self._headers())
-
+                
+                logger.debug(f"Got response with status {response.status_code}")
                 if response.status_code != 200:
                     logger.error(f"Failed to fetch channels: HTTP {response.status_code}")
                     return
 
+                logger.debug("Looking for channels block in response")
                 channels_block = re.compile("<center><h1(.+?)tab-2", re.MULTILINE | re.DOTALL).findall(str(response.text))
 
                 if not channels_block:
                     logger.error("No channels block found in response")
+                    logger.debug(f"Response text: {response.text[:500]}...")  # Log first 500 chars
                     return
 
+                logger.debug("Found channels block, extracting channel data")
                 channels_data = re.compile("href=\"(.*)\" target(.*)<strong>(.*)</strong>").findall(channels_block[0])
+                logger.debug(f"Found {len(channels_data)} raw channel entries")
 
                 # Process channels concurrently for better performance
                 tasks = []
@@ -75,6 +85,7 @@ class StepDaddy:
                     tasks.append(self._process_channel_data(channel_data))
                 
                 # Wait for all channel processing to complete
+                logger.debug(f"Processing {len(tasks)} channels concurrently")
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 
                 for result in results:
@@ -85,11 +96,14 @@ class StepDaddy:
 
                 logger.info(f"Successfully processed {len(channels)} channels")
             except Exception as e:
-                logger.error(f"Error loading channels: {str(e)}")
+                logger.error(f"Error loading channels: {str(e)}", exc_info=True)  # Add full traceback
                 # Don't raise the exception, just log it and keep existing channels
             finally:
                 if channels:  # Only update if we successfully loaded channels
+                    logger.debug(f"Updating channels list with {len(channels)} channels")
                     self.channels = sorted(channels, key=lambda channel: (channel.name.startswith("18"), channel.name))
+                else:
+                    logger.warning("No channels were loaded, keeping existing channels list")
 
     async def _process_channel_data(self, channel_data):
         """Process a single channel data asynchronously"""

@@ -6,8 +6,14 @@ This creates a backend app for API endpoints and WebSocket communication.
 import os
 import sys
 import uvicorn
+import asyncio
+import json
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
+from typing import List, Dict, Set
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -21,100 +27,155 @@ os.environ["REFLEX_SKIP_COMPILE"] = "1"  # Skip frontend compilation in producti
 api_url = os.environ.get("API_URL", "http://localhost:3232")  # Frontend interface
 backend_uri = os.environ.get("BACKEND_URI", "http://localhost:8005")  # Backend service
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
+workers = int(os.environ.get("WORKERS", "3"))
 
-# Create WebSocket URL from API_URL (where clients will connect)
-ws_url = api_url.replace("http://", "ws://").replace("https://", "wss://")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Import required modules
-import reflex as rx
-from fastapi import FastAPI, Request, WebSocket, APIRouter
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse, JSONResponse
-from StepDaddyLiveHD import backend
-from StepDaddyLiveHD.StepDaddyLiveHD import State
-from starlette.types import ASGIApp
-
-# Initialize the Reflex app with WebSocket support
-app = rx.App(_state=State)
-
-# Create a new FastAPI app
-fastapi_app = FastAPI()
+# Create FastAPI app
+app = FastAPI()
 
 # Add CORS middleware
-fastapi_app.add_middleware(
+app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        api_url,       # Frontend interface
-        ws_url,        # WebSocket URL
-        backend_uri,   # Backend service
-        "*",          # Allow all origins for WebSocket
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
-# Health check endpoint - must be before the middleware
-@fastapi_app.get("/health")
-async def health():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "channels_count": len(backend.step_daddy.channels),
-        "message": "Backend API is running with Reflex WebSocket support."
-    }
-
-# Create a middleware to handle both Reflex and backend routes
-@fastapi_app.middleware("http")
-async def route_middleware(request: Request, call_next):
-    # Strip /api prefix if present
-    path = request.url.path
-    if path.startswith("/api"):
-        path = path[4:]  # Remove /api prefix
-        request.scope["path"] = path
+# WebSocket connection manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+        self.ping_tasks: Dict[str, asyncio.Task] = {}
+        self.last_ping: Dict[str, float] = {}
+        self.connection_count = 0
     
-    # Forward to backend app
-    return await call_next(request)
+    async def connect(self, websocket: WebSocket, client_id: str):
+        await websocket.accept()
+        self.active_connections[client_id] = websocket
+        self.connection_count += 1
+        logger.info(f"WebSocket client connected. Total connections: {self.connection_count}")
+        
+        # Start ping task for this connection
+        self.ping_tasks[client_id] = asyncio.create_task(self._ping_client(client_id))
+    
+    async def disconnect(self, client_id: str):
+        if client_id in self.active_connections:
+            # Cancel ping task
+            if client_id in self.ping_tasks:
+                self.ping_tasks[client_id].cancel()
+                del self.ping_tasks[client_id]
+            
+            # Remove connection
+            del self.active_connections[client_id]
+            self.connection_count -= 1
+            logger.info(f"WebSocket client disconnected. Total connections: {self.connection_count}")
+    
+    async def _ping_client(self, client_id: str):
+        """Send periodic pings to keep connection alive."""
+        try:
+            while True:
+                if client_id in self.active_connections:
+                    websocket = self.active_connections[client_id]
+                    try:
+                        await websocket.send_text("2")  # Engine.IO ping packet
+                        self.last_ping[client_id] = asyncio.get_event_loop().time()
+                    except Exception as e:
+                        logger.error(f"Error sending ping to client {client_id}: {str(e)}")
+                        await self.disconnect(client_id)
+                        break
+                    await asyncio.sleep(25)  # Send ping every 25 seconds
+                else:
+                    break
+        except asyncio.CancelledError:
+            pass
+    
+    async def broadcast(self, message: str):
+        """Broadcast message to all connected clients."""
+        disconnected = set()
+        for client_id, websocket in self.active_connections.items():
+            try:
+                await websocket.send_text(message)
+            except Exception as e:
+                logger.error(f"Error broadcasting to client {client_id}: {str(e)}")
+                disconnected.add(client_id)
+        
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            await self.disconnect(client_id)
 
-# Create backend routes
-@fastapi_app.get("/stream/{channel_id}.m3u8")
-async def stream(channel_id: str):
-    return await backend.stream(channel_id)
+manager = ConnectionManager()
 
-@fastapi_app.get("/key/{url}/{host}")
-async def key(url: str, host: str):
-    return await backend.key(url, host)
+@app.websocket("/_event/")
+async def websocket_endpoint(websocket: WebSocket):
+    client_id = str(id(websocket))
+    try:
+        # Accept connection
+        await manager.connect(websocket, client_id)
+        
+        # Send Engine.IO open packet
+        await websocket.send_text("0{\"sid\":\"" + client_id + "\",\"upgrades\":[],\"pingInterval\":25000,\"pingTimeout\":20000}")
+        
+        # Handle messages
+        while True:
+            try:
+                message = await websocket.receive_text()
+                
+                # Handle Engine.IO packets
+                if message == "2probe":  # Engine.IO probe packet
+                    await websocket.send_text("3probe")  # Send probe response
+                elif message == "5":  # Engine.IO upgrade packet
+                    await websocket.send_text("6")  # Send upgrade confirmation
+                elif message == "3":  # Engine.IO pong packet
+                    manager.last_ping[client_id] = asyncio.get_event_loop().time()
+                else:
+                    # Handle regular messages
+                    try:
+                        # Parse message and broadcast state updates
+                        data = json.loads(message)
+                        if "event" in data:
+                            await manager.broadcast(json.dumps({
+                                "event": data["event"],
+                                "data": data.get("data", {})
+                            }))
+                    except json.JSONDecodeError:
+                        pass  # Ignore invalid JSON
+                    
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"Error handling message from client {client_id}: {str(e)}")
+                break
+                
+    except Exception as e:
+        logger.error(f"Error in websocket connection {client_id}: {str(e)}")
+    finally:
+        await manager.disconnect(client_id)
 
-@fastapi_app.get("/content/{path}")
-async def content(path: str):
-    return await backend.content(path)
-
-@fastapi_app.get("/playlist.m3u8")
-def playlist():
-    return backend.playlist()
-
-@fastapi_app.get("/logo/{logo}")
-async def logo(logo: str):
-    return await backend.logo(logo)
-
-# Mount the Reflex app for WebSocket events - must be after all routes
-if app._api is not None:
-    fastapi_app.mount("", app._api)  # Mount at root to handle all WebSocket events
+def run():
+    """Run the backend server."""
+    config = uvicorn.Config(
+        app=app,
+        host="0.0.0.0",
+        port=backend_port,
+        workers=workers,
+        loop="asyncio",
+        ws_ping_interval=None,  # We handle pings ourselves
+        ws_ping_timeout=None,
+        timeout_keep_alive=30,
+        backlog=2048,
+        limit_concurrency=1000,
+        limit_max_requests=10000,
+        timeout_graceful_shutdown=10,
+    )
+    server = uvicorn.Server(config)
+    server.run()
 
 if __name__ == "__main__":
-    # Start the Reflex app with WebSocket support
-    # Skip compilation in production/container environments
-    if not os.environ.get("REFLEX_SKIP_COMPILE"):
-        app._compile()
-    
-    uvicorn.run(
-        fastapi_app,
-        host="0.0.0.0",
-        port=backend_port,  # Use the same backend_port as frontend config
-        ws="websockets",  # Enable WebSocket support
-        ws_ping_interval=20,  # Keep connections alive
-        ws_ping_timeout=30,
-        log_level="info",
-        http="h11"  # Force HTTP/1.1 for WebSocket support
-    ) 
+    run() 

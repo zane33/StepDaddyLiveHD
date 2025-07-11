@@ -4,7 +4,7 @@ import httpx
 import logging
 import time
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Dict, Tuple
 from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
 from fastapi import Response, status, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
@@ -12,9 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from .utils import urlsafe_base64_decode
 import json
 from urllib.parse import urlparse, urlunparse
+from collections import OrderedDict
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Get environment variables
@@ -50,23 +54,45 @@ fastapi_app.add_middleware(
     expose_headers=["*"],
 )
 
-# Create HTTP client with connection pooling
+# Create HTTP client with connection pooling and lower timeouts
 client = httpx.AsyncClient(
     http2=True,
-    timeout=httpx.Timeout(30.0, connect=10.0),
+    timeout=httpx.Timeout(15.0, connect=5.0),  # Reduced timeouts
     limits=httpx.Limits(
-        max_keepalive_connections=20,
-        max_connections=100,
-        keepalive_expiry=30.0
+        max_keepalive_connections=10,  # Reduced connections
+        max_connections=50,
+        keepalive_expiry=15.0
     ),
     follow_redirects=True
 )
 
 step_daddy = StepDaddy()
 
-# Cache for expensive operations
-stream_cache = {}
+# Use OrderedDict for LRU cache behavior
+class LRUCache(OrderedDict):
+    def __init__(self, maxsize=0, *args, **kwargs):
+        self.maxsize = maxsize
+        super().__init__(*args, **kwargs)
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        self.move_to_end(key)
+        return value
+
+    def __setitem__(self, key, value):
+        if key in self:
+            self.move_to_end(key)
+        super().__setitem__(key, value)
+        if self.maxsize > 0 and len(self) > self.maxsize:
+            oldest = next(iter(self))
+            del self[oldest]
+
+# Cache with size limit and TTL
+stream_cache = LRUCache(maxsize=50)  # Reduced from 100 to 50
 cache_ttl = 300  # 5 minutes
+
+# Track active tasks for cleanup
+active_tasks: Dict[str, asyncio.Task] = {}
 
 logger.info("Backend initialized with connection pooling")
 
@@ -78,18 +104,21 @@ async def startup_event():
     global channel_update_task
     # Start the channel update background task
     channel_update_task = asyncio.create_task(update_channels())
+    active_tasks["channel_update"] = channel_update_task
     logger.info("Channel update background task started")
 
 @fastapi_app.on_event("shutdown")
 async def shutdown_event():
-    global channel_update_task
-    # Cancel the channel update task
-    if channel_update_task:
-        channel_update_task.cancel()
-        try:
-            await channel_update_task
-        except asyncio.CancelledError:
-            pass
+    # Cancel all active tasks
+    for task_name, task in active_tasks.items():
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                logger.info(f"Task {task_name} cancelled")
+    
+    # Close HTTP client
     await client.aclose()
     logger.info("HTTP client and background tasks closed")
 
@@ -118,16 +147,21 @@ async def stream(channel_id: str):
                     headers={"Content-Disposition": f"attachment; filename={channel_id}.m3u8"}
                 )
         
-        # Generate new stream
-        stream_data = await step_daddy.stream(channel_id)
+        # Generate new stream with timeout
+        try:
+            stream_data = await asyncio.wait_for(
+                step_daddy.stream(channel_id),
+                timeout=10.0  # 10 second timeout for stream generation
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout generating stream for channel {channel_id}")
+            return JSONResponse(
+                content={"error": "Stream generation timeout"},
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT
+            )
         
-        # Cache the result
+        # Cache the result (LRU cache handles cleanup)
         stream_cache[cache_key] = (stream_data, current_time)
-        
-        # Clean old cache entries
-        if len(stream_cache) > 100:  # Limit cache size
-            oldest_key = min(stream_cache.keys(), key=lambda k: stream_cache[k][1])
-            del stream_cache[oldest_key]
         
         return Response(
             content=stream_data,
@@ -143,10 +177,21 @@ async def stream(channel_id: str):
 @fastapi_app.get("/key/{url}/{host}")
 async def key(url: str, host: str):
     try:
+        # Add timeout to key retrieval
+        key_data = await asyncio.wait_for(
+            step_daddy.key(url, host),
+            timeout=5.0  # 5 second timeout for key retrieval
+        )
         return Response(
-            content=await step_daddy.key(url, host),
+            content=key_data,
             media_type="application/octet-stream",
             headers={"Content-Disposition": "attachment; filename=key"}
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout getting key for {url}")
+        return JSONResponse(
+            content={"error": "Key retrieval timeout"},
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT
         )
     except Exception as e:
         logger.error(f"Error getting key: {str(e)}")
@@ -156,8 +201,8 @@ async def key(url: str, host: str):
 async def content(path: str):
     try:
         async def proxy_stream():
-            async with client.stream("GET", step_daddy.content_url(path), timeout=60) as response:
-                async for chunk in response.aiter_bytes(chunk_size=64 * 1024):
+            async with client.stream("GET", step_daddy.content_url(path), timeout=30) as response:
+                async for chunk in response.aiter_bytes(chunk_size=32 * 1024):  # Reduced chunk size
                     yield chunk
         return StreamingResponse(
             proxy_stream(), 
@@ -169,56 +214,81 @@ async def content(path: str):
         return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 async def update_channels():
+    update_interval = 300  # 5 minutes
+    retry_interval = 60   # 1 minute on failure
+    max_retries = 3      # Maximum number of retries
+    
     while True:
         try:
             logger.info("Loading channels...")
-            await step_daddy.load_channels()
+            retries = 0
+            success = False
             
-            # Verify channels were actually loaded
-            if not step_daddy.channels:
-                raise Exception("No channels loaded from primary source")
-                
-            logger.info(f"Successfully loaded {len(step_daddy.channels)} channels")
-            # Clear stream cache when channels are updated
-            stream_cache.clear()
-            await asyncio.sleep(300)
-        except asyncio.CancelledError:
-            logger.info("Channel update task cancelled")
-            break
-        except Exception as e:
-            logger.error(f"Error loading channels: {str(e)}")
-            # Try to load from fallback if available
-            try:
+            while not success and retries < max_retries:
+                try:
+                    await step_daddy.load_channels()
+                    if step_daddy.channels:
+                        success = True
+                        logger.info(f"Successfully loaded {len(step_daddy.channels)} channels")
+                        # Clear stream cache when channels are updated
+                        stream_cache.clear()
+                        await asyncio.sleep(update_interval)
+                    else:
+                        raise Exception("No channels loaded from primary source")
+                except Exception as e:
+                    retries += 1
+                    logger.error(f"Error loading channels (attempt {retries}/{max_retries}): {str(e)}")
+                    if retries < max_retries:
+                        await asyncio.sleep(retry_interval)
+            
+            if not success:
+                # All retries failed, try fallback
                 if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
                     logger.info("Loading channels from fallback file...")
                     with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
                         fallback_data = json.load(f)
                         step_daddy.channels = [Channel(**channel_data) for channel_data in fallback_data]
-                    if not step_daddy.channels:
-                        raise Exception("No channels loaded from fallback")
-                    logger.info(f"Loaded {len(step_daddy.channels)} channels from fallback")
+                    if step_daddy.channels:
+                        logger.info(f"Loaded {len(step_daddy.channels)} channels from fallback")
+                    else:
+                        logger.error("No channels in fallback file")
                 else:
-                    logger.error("No fallback file found at StepDaddyLiveHD/fallback_channels.json")
-            except Exception as fallback_error:
-                logger.error(f"Fallback loading also failed: {str(fallback_error)}")
-            # Continue running but wait a bit longer before retrying
-            await asyncio.sleep(60)  # Wait 1 minute before retrying on initial load, 10 minutes on subsequent failures
+                    logger.error("No fallback file available")
+                
+                # Wait before next attempt even if using fallback
+                await asyncio.sleep(update_interval)
+                
+        except asyncio.CancelledError:
+            logger.info("Channel update task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Unexpected error in channel update loop: {str(e)}")
+            await asyncio.sleep(retry_interval)
 
 @lru_cache(maxsize=1)
 def get_channels():
     """Get current channels with fallback handling."""
-    channels = step_daddy.channels
-    if not channels:
+    try:
+        logger.debug("Attempting to get channels from step_daddy instance")
+        channels = step_daddy.channels
+        if channels:
+            logger.info(f"Successfully retrieved {len(channels)} channels")
+            return channels
+        
+        logger.warning("No channels available from primary source, trying fallback")
         # Try loading from fallback synchronously if no channels available
-        try:
-            if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
-                with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
-                    fallback_data = json.load(f)
-                    channels = [Channel(**channel_data) for channel_data in fallback_data]
-                logger.info(f"Loaded {len(channels)} channels from fallback in get_channels()")
-        except Exception as e:
-            logger.error(f"Error loading fallback in get_channels(): {str(e)}")
-    return channels
+        if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
+            with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
+                fallback_data = json.load(f)
+                channels = [Channel(**channel_data) for channel_data in fallback_data]
+            logger.info(f"Loaded {len(channels)} channels from fallback in get_channels()")
+            return channels
+        else:
+            logger.error("No fallback channels file found")
+            return []
+    except Exception as e:
+        logger.error(f"Error in get_channels(): {str(e)}", exc_info=True)
+        return []
 
 def get_channel(channel_id) -> Optional[Channel]:
     if not channel_id or channel_id == "":
