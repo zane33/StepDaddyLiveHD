@@ -6,7 +6,9 @@ log {
 }
 
 # Basic settings - compress all except streaming endpoints
-@compress not path /stream/* /content/* /key/*
+@compress {
+    not path /stream/* /content/* /key/*
+}
 encode @compress gzip
 root * /srv
 
