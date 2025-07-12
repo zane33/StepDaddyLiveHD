@@ -7,7 +7,14 @@ log {
 
 # Basic settings - disable compression for streaming endpoints
 @no_compress path /stream/* /content/* /key/*
+<<<<<<< HEAD
 encode not @no_compress gzip
+=======
+encode {
+	not @no_compress
+	gzip
+}
+>>>>>>> parent of 30ba4e8 (fix for caddy)
 root * /srv
 
 # Global headers
