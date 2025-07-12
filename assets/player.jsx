@@ -60,19 +60,11 @@ export function Player({ title, src }) {
         title={title}
         src={src}
         viewType='video'
-        streamType='live'
+        streamType='ll-live'
         logLevel='warn'
         playsInline
         autoplay
         muted
-        live
-        liveTolerance={10}
-        minLiveDVRWindow={30}
-        storage={null}
-        onCanPlay={handleCanPlay}
-        onWaiting={handleWaiting}
-        onError={handleError}
-        onStalled={handleStalled}
       >
         <MediaProvider>
           <Poster className="vds-poster" />
