@@ -7,10 +7,7 @@ log {
 
 # Basic settings - disable compression for streaming endpoints
 @no_compress path /stream/* /content/* /key/*
-encode {
-	not @no_compress
-	gzip
-}
+encode @!no_compress gzip
 root * /srv
 
 # Global headers
