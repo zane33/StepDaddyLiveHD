@@ -5,8 +5,12 @@ log {
 	level DEBUG
 }
 
-# Basic settings
-encode gzip
+# Basic settings - disable compression for streaming endpoints
+@no_compress path /stream/* /content/* /key/*
+encode {
+	not @no_compress
+	gzip
+}
 root * /srv
 
 # Global headers
@@ -55,15 +59,26 @@ handle_path /api/* {
 }
 
 handle_path /stream/* {
-	reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT} {
+		flush_interval -1
+		header_up X-Real-IP {remote_host}
+		header_down -Server
+	}
 }
 
 handle_path /key/* {
-	reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT} {
+		flush_interval -1
+		header_up X-Real-IP {remote_host}
+	}
 }
 
 handle_path /content/* {
-	reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT} {
+		flush_interval -1
+		header_up X-Real-IP {remote_host}
+		header_down -Server
+	}
 }
 
 handle_path /playlist.m3u8 {

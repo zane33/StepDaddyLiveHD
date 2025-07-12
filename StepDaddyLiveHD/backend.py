@@ -55,14 +55,14 @@ fastapi_app.add_middleware(
     expose_headers=["*"],
 )
 
-# Create HTTP client with balanced settings for streaming
+# Create HTTP client with optimized settings for streaming
 client = httpx.AsyncClient(
     http2=True,
     timeout=httpx.Timeout(15.0, connect=5.0),  # Reasonable timeouts
     limits=httpx.Limits(
-        max_keepalive_connections=15,  # Moderate connections
-        max_connections=75,
-        keepalive_expiry=30.0  # Balanced keepalive
+        max_keepalive_connections=50,  # Increased for better streaming
+        max_connections=200,            # Increased from 75
+        keepalive_expiry=60.0          # Increased from 30
     ),
     follow_redirects=True
 )
@@ -90,10 +90,13 @@ class LRUCache(OrderedDict):
 
 # Cache with size limit and TTL optimized for streaming
 stream_cache = LRUCache(maxsize=100)  # Increased for better caching
-cache_ttl = 600  # 10 minutes for longer cache retention
+cache_ttl = 30  # 30 seconds for live streaming freshness
 
 # Track active tasks for cleanup
 active_tasks: Dict[str, asyncio.Task] = {}
+
+# Concurrency control for streaming
+_stream_semaphore = asyncio.Semaphore(10)
 
 logger.info("Backend initialized with connection pooling")
 
@@ -201,19 +204,20 @@ async def key(url: str, host: str):
 @fastapi_app.get("/content/{path}")
 async def content(path: str):
     try:
-        async def proxy_stream():
-            async with client.stream("GET", step_daddy.content_url(path), timeout=30) as response:
-                async for chunk in response.aiter_bytes(chunk_size=8 * 1024):  # Smaller chunks for better real-time streaming
-                    yield chunk
-        return StreamingResponse(
-            proxy_stream(), 
-            media_type="application/octet-stream",
-            headers={
-                "Cache-Control": "public, max-age=3600",
-                "Accept-Ranges": "bytes",
-                "Transfer-Encoding": "chunked"
-            }
-        )
+        async with _stream_semaphore:  # Control concurrent streams
+            async def proxy_stream():
+                async with client.stream("GET", step_daddy.content_url(path), timeout=30) as response:
+                    async for chunk in response.aiter_bytes(chunk_size=4 * 1024):  # Optimized chunks for lower latency
+                        yield chunk
+            return StreamingResponse(
+                proxy_stream(), 
+                media_type="application/octet-stream",
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Accept-Ranges": "bytes",
+                    "Transfer-Encoding": "chunked"
+                }
+            )
     except Exception as e:
         logger.error(f"Error proxying content: {str(e)}")
         return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
