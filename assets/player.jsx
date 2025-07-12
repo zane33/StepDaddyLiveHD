@@ -37,6 +37,22 @@ function InjectCSS() {
 }
 
 export function Player({ title, src }) {
+  const handleCanPlay = () => {
+    console.log('Video can start playing');
+  };
+
+  const handleWaiting = () => {
+    console.log('Video is buffering/waiting');
+  };
+
+  const handleError = (event) => {
+    console.error('Video error:', event);
+  };
+
+  const handleStalled = () => {
+    console.log('Video playback stalled');
+  };
+
   return (
     <>
       <InjectCSS />
@@ -49,6 +65,14 @@ export function Player({ title, src }) {
         playsInline
         autoplay
         muted
+        live
+        liveTolerance={10}
+        minLiveDVRWindow={30}
+        storage={null}
+        onCanPlay={handleCanPlay}
+        onWaiting={handleWaiting}
+        onError={handleError}
+        onStalled={handleStalled}
       >
         <MediaProvider>
           <Poster className="vds-poster" />
