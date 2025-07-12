@@ -30,6 +30,9 @@ class State(rx.State):
     # WebSocket state
     ws_connected: bool = False
     
+    # UI state
+    status_bar_visible: bool = True
+    
     @rx.var
     def filtered_channels(self) -> List[Channel]:
         """Filter channels based on search query."""
@@ -58,7 +61,12 @@ class State(rx.State):
         if not self.ws_connected:
             return "WebSocket disconnected - trying to reconnect..."
         if self.connection_status == "connected":
-            return f"Connected • {self.channels_count} channels • Updated {self.last_update}"
+            if self.last_update == "from fallback":
+                return f"Connected • {self.channels_count} channels • Fallback data loaded"
+            elif self.last_update == "fallback mode":
+                return f"Connected • {self.channels_count} channels • Demo mode active"
+            else:
+                return f"Connected • {self.channels_count} channels • Updated {self.last_update}"
         elif self.connection_status == "connecting":
             return "Connecting to server..."
         else:
@@ -71,55 +79,84 @@ class State(rx.State):
         self.error_message = ""
         
         try:
-            # Load channels from backend
-            channels = backend.get_channels()
+            # First try to fetch from the API endpoint
+            import httpx
+            import json
+            import os
             
-            if not channels:
-                self.connection_status = "error"
-                self.error_message = "No channels available. Please try again later."
-                return
+            try:
+                # Try to connect to the API endpoint through proxy
+                frontend_port = os.environ.get("PORT", "3232")
+                api_url = f"http://localhost:{frontend_port}"
+                async with httpx.AsyncClient(timeout=10.0, base_url=api_url) as client:
+                    response = await client.get("/api/channels")
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get("channels"):
+                            self.channels = [Channel(**channel_data) for channel_data in data["channels"]]
+                            self.channels_count = len(self.channels)
+                            self.connection_status = "connected"
+                            self.ws_connected = True
+                            self.last_update = time.strftime("%H:%M:%S")
+                            self.error_message = ""
+                            self.is_loading = False
+                            return
+                        else:
+                            raise Exception("No channels in API response")
+                    else:
+                        raise Exception(f"API returned status {response.status_code}")
+            except Exception as api_error:
+                print(f"API error: {api_error}")
+                # Fall back to direct backend call if API is not available
+                try:
+                    channels = backend.get_channels()
+                    if channels:
+                        self.channels = channels
+                        self.channels_count = len(self.channels)
+                        self.connection_status = "connected"
+                        self.ws_connected = True
+                        self.last_update = time.strftime("%H:%M:%S")
+                        self.error_message = ""
+                        self.is_loading = False
+                        return
+                    else:
+                        raise Exception("No channels returned from backend")
+                except Exception as backend_error:
+                    print(f"Backend error: {backend_error}")
+                    # Try to load from fallback file
+                    fallback_path = "StepDaddyLiveHD/fallback_channels.json"
+                    if os.path.exists(fallback_path):
+                        with open(fallback_path, "r") as f:
+                            fallback_data = json.load(f)
+                            self.channels = [Channel(**channel_data) for channel_data in fallback_data]
+                            self.channels_count = len(self.channels)
+                            self.connection_status = "connected"
+                            self.ws_connected = True
+                            self.last_update = "from fallback"
+                            self.error_message = "Using fallback data - backend unavailable"
+                            self.is_loading = False
+                            return
+                    else:
+                        # Last resort: create minimal demo channels
+                        self.channels = [
+                            Channel(id="1", name="ESPN", logo="/missing.png", tags=["sports"]),
+                            Channel(id="2", name="CNN", logo="/missing.png", tags=["news"]),
+                            Channel(id="3", name="HBO", logo="/missing.png", tags=["entertainment"]),
+                            Channel(id="4", name="Discovery Channel", logo="/missing.png", tags=["documentary"]),
+                            Channel(id="5", name="National Geographic", logo="/missing.png", tags=["documentary", "nature"])
+                        ]
+                        self.channels_count = len(self.channels)
+                        self.connection_status = "connected"
+                        self.ws_connected = True
+                        self.last_update = "demo mode"
+                        self.error_message = "Backend unavailable, using demo channels"
                 
-            self.channels = channels
-            self.channels_count = len(self.channels)
-            self.connection_status = "connected"
-            self.last_update = time.strftime("%H:%M:%S")
-            
-            # Save to fallback if successful
-            if self.channels:
-                import json
-                import os
-                fallback_data = [
-                    {
-                        "id": ch.id,
-                        "name": ch.name,
-                        "logo": ch.logo,
-                        "tags": ch.tags,
-                        "is_live": getattr(ch, 'is_live', True)
-                    }
-                    for ch in self.channels  # Save all channels as fallback
-                ]
-                os.makedirs("StepDaddyLiveHD", exist_ok=True)
-                with open("StepDaddyLiveHD/fallback_channels.json", "w") as f:
-                    json.dump(fallback_data, f, indent=2)
-                    
         except Exception as e:
             self.connection_status = "error"
-            self.error_message = f"Error loading channels: {str(e)}"
-            # Try to load from fallback
-            try:
-                import json
-                import os
-                if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
-                    with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
-                        fallback_data = json.load(f)
-                        self.channels = [Channel(**channel_data) for channel_data in fallback_data]
-                        self.channels_count = len(self.channels)
-                        self.last_update = "from cache"
-                        if self.channels:
-                            self.connection_status = "connected"
-                            self.error_message = "Using cached data - some features may be limited"
-            except Exception as fallback_error:
-                self.error_message = f"Failed to load channels (both live and cached): {str(fallback_error)}"
+            self.error_message = f"Critical error: {str(e)}"
+            self.channels = []
+            self.channels_count = 0
+            self.ws_connected = False
         
         finally:
             self.is_loading = False
@@ -169,9 +206,25 @@ class State(rx.State):
         self.search_query = query
     
     @rx.event
+    def show_status_bar(self):
+        """Show status bar on hover."""
+        self.status_bar_visible = True
+    
+    @rx.event  
+    def hide_status_bar(self):
+        """Hide status bar when not hovering."""
+        self.status_bar_visible = False
+    
+    @rx.event
     def on_load(self):
         """Initial load when page loads."""
-        return self.load_channels
+        # Set WebSocket as connected since Reflex manages the connection
+        self.ws_connected = True
+        self.connection_status = "connecting"
+        # Hide status bar after initial load
+        self.status_bar_visible = False
+        # Return the async load_channels method to trigger state update
+        return State.load_channels
 
     async def handle_channel_update(self):
         """Handle real-time channel updates."""
@@ -243,9 +296,14 @@ def status_bar() -> rx.Component:
         padding="1rem",
         border_bottom="1px solid var(--gray-6)",
         background_color="var(--gray-2)",
-        position="sticky",
-        top="0",
-        z_index="10",
+        position="fixed",
+        top=rx.cond(State.status_bar_visible, "0", "-100px"),
+        left="0",
+        right="0",
+        z_index="100",
+        transition="top 0.3s ease-in-out",
+        on_mouse_enter=State.show_status_bar,
+        on_mouse_leave=State.hide_status_bar,
     )
 
 
@@ -342,10 +400,22 @@ def channels_grid() -> rx.Component:
 def index() -> rx.Component:
     """Main page with real-time features."""
     return rx.box(
+        # Top trigger area for auto-hide status bar
+        rx.box(
+            height="20px",
+            width="100%",
+            position="fixed",
+            top="0",
+            left="0",
+            z_index="99",
+            on_mouse_enter=State.show_status_bar,
+        ),
         navbar(search_bar()),
         status_bar(),
         channels_grid(),
         width="100%",
+        # Add top padding to account for fixed status bar
+        padding_top="120px",
     )
 
 

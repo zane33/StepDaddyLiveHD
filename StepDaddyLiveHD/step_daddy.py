@@ -128,7 +128,7 @@ class StepDaddy:
         meta = self._meta.get(clean_channel_name, {})
         logo = meta.get("logo", "/missing.png")
         if logo.startswith("http"):
-            logo = f"{config.api_url}/logo/{urlsafe_base64(logo)}"
+            logo = f"{config.api_url}/api/logo/{urlsafe_base64(logo)}"
         return Channel(id=channel_id, name=channel_name, tags=meta.get("tags", []), logo=logo)
 
     async def stream(self, channel_id: str):
@@ -138,7 +138,8 @@ class StepDaddy:
                 url = f"{self._base_url}/stream/bet.php?id=bet{channel_id}"
             
             # Use semaphore to limit concurrent stream requests
-            async with self._get_stream_semaphore():
+            semaphore = self._get_stream_semaphore()
+            async with semaphore:
                 response = await self._session.post(url, headers=self._headers())
                 source_url = re.compile("iframe src=\"(.*)\" width").findall(response.text)[0]
                 source_response = await self._session.post(source_url, headers=self._headers(url))
@@ -169,9 +170,9 @@ class StepDaddy:
                 for line in m3u8.text.split("\n"):
                     if line.startswith("#EXT-X-KEY:"):
                         original_url = re.search(r'URI="(.*?)"', line).group(1)
-                        line = line.replace(original_url, f"{config.api_url}/key/{encrypt(original_url)}/{encrypt(urlparse(source_url).netloc)}")
+                        line = line.replace(original_url, f"{config.api_url}/api/key/{encrypt(original_url)}/{encrypt(urlparse(source_url).netloc)}")
                     elif line.startswith("http") and config.proxy_content:
-                        line = f"{config.api_url}/content/{encrypt(line)}"
+                        line = f"{config.api_url}/api/content/{encrypt(line)}"
                     m3u8_data += line + "\n"
                 return m3u8_data
         except Exception as e:
@@ -181,7 +182,7 @@ class StepDaddy:
     # Semaphore for limiting concurrent stream requests
     _stream_semaphore = None
     
-    async def _get_stream_semaphore(self):
+    def _get_stream_semaphore(self):
         """Get or create stream semaphore"""
         if self._stream_semaphore is None:
             self._stream_semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent stream requests

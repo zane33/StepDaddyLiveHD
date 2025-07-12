@@ -22,8 +22,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Get environment variables
-api_url = os.environ.get("API_URL", "http://localhost:3232")
+frontend_port = int(os.environ.get("PORT", "3232"))
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
+api_url = os.environ.get("API_URL", f"http://localhost:{frontend_port}")  # Use frontend port for integrated API
 
 # Parse API_URL to create WebSocket URL with backend port
 parsed_url = urlparse(api_url)
@@ -54,14 +55,14 @@ fastapi_app.add_middleware(
     expose_headers=["*"],
 )
 
-# Create HTTP client with connection pooling and lower timeouts
+# Create HTTP client with balanced settings for streaming
 client = httpx.AsyncClient(
     http2=True,
-    timeout=httpx.Timeout(15.0, connect=5.0),  # Reduced timeouts
+    timeout=httpx.Timeout(15.0, connect=5.0),  # Reasonable timeouts
     limits=httpx.Limits(
-        max_keepalive_connections=10,  # Reduced connections
-        max_connections=50,
-        keepalive_expiry=15.0
+        max_keepalive_connections=15,  # Moderate connections
+        max_connections=75,
+        keepalive_expiry=30.0  # Balanced keepalive
     ),
     follow_redirects=True
 )
@@ -87,9 +88,9 @@ class LRUCache(OrderedDict):
             oldest = next(iter(self))
             del self[oldest]
 
-# Cache with size limit and TTL
-stream_cache = LRUCache(maxsize=50)  # Reduced from 100 to 50
-cache_ttl = 300  # 5 minutes
+# Cache with size limit and TTL optimized for streaming
+stream_cache = LRUCache(maxsize=100)  # Increased for better caching
+cache_ttl = 600  # 10 minutes for longer cache retention
 
 # Track active tasks for cleanup
 active_tasks: Dict[str, asyncio.Task] = {}
@@ -202,12 +203,16 @@ async def content(path: str):
     try:
         async def proxy_stream():
             async with client.stream("GET", step_daddy.content_url(path), timeout=30) as response:
-                async for chunk in response.aiter_bytes(chunk_size=32 * 1024):  # Reduced chunk size
+                async for chunk in response.aiter_bytes(chunk_size=8 * 1024):  # Smaller chunks for better real-time streaming
                     yield chunk
         return StreamingResponse(
             proxy_stream(), 
             media_type="application/octet-stream",
-            headers={"Cache-Control": "public, max-age=3600"}
+            headers={
+                "Cache-Control": "public, max-age=3600",
+                "Accept-Ranges": "bytes",
+                "Transfer-Encoding": "chunked"
+            }
         )
     except Exception as e:
         logger.error(f"Error proxying content: {str(e)}")
@@ -265,7 +270,6 @@ async def update_channels():
             logger.error(f"Unexpected error in channel update loop: {str(e)}")
             await asyncio.sleep(retry_interval)
 
-@lru_cache(maxsize=1)
 def get_channels():
     """Get current channels with fallback handling."""
     try:
@@ -353,4 +357,72 @@ async def health():
         "cache_size": len(stream_cache),
         "uptime": time.time()
     }
+
+@fastapi_app.get("/channels")
+async def channels_endpoint():
+    """Get all channels as JSON."""
+    try:
+        channels = get_channels()
+        return {
+            "channels": [
+                {
+                    "id": ch.id,
+                    "name": ch.name,
+                    "logo": ch.logo,
+                    "tags": ch.tags
+                }
+                for ch in channels
+            ],
+            "count": len(channels)
+        }
+    except Exception as e:
+        logger.error(f"Error in channels endpoint: {str(e)}")
+        return {"error": str(e), "channels": [], "count": 0}
+
+@fastapi_app.get("/schedule")
+async def schedule_endpoint():
+    """Get schedule data as JSON."""
+    try:
+        schedule_data = await get_schedule()
+        return {"schedule": schedule_data, "status": "success"}
+    except Exception as e:
+        logger.error(f"Error in schedule endpoint: {str(e)}")
+        # Return fallback schedule data
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        
+        now = datetime.now(ZoneInfo("UTC"))
+        fallback_schedule = {}
+        
+        for day_offset in range(7):  # 7 days
+            day = now + timedelta(days=day_offset)
+            day_key = day.strftime("%d/%m/%Y - %A")
+            fallback_schedule[day_key] = {
+                "Sports": [
+                    {
+                        "event": f"Sports Event {i+1}",
+                        "time": f"{9+i*3}:00",
+                        "channels": [{"channel_name": "ESPN", "channel_id": "1"}]
+                    }
+                    for i in range(3)
+                ],
+                "News": [
+                    {
+                        "event": f"News Hour {i+1}",
+                        "time": f"{10+i*4}:00",
+                        "channels": [{"channel_name": "CNN", "channel_id": "2"}]
+                    }
+                    for i in range(3)
+                ],
+                "Entertainment": [
+                    {
+                        "event": f"Entertainment Show {i+1}",
+                        "time": f"{20+i}:00",
+                        "channels": [{"channel_name": "HBO", "channel_id": "3"}]
+                    }
+                    for i in range(3)
+                ]
+            }
+        
+        return {"schedule": fallback_schedule, "status": "fallback"}
 

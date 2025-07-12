@@ -1,8 +1,8 @@
 :{$PORT}
 
 log {
-    format json
-    level DEBUG
+	format json
+	level DEBUG
 }
 
 # Basic settings
@@ -11,75 +11,84 @@ root * /srv
 
 # Global headers
 header {
-    # Enable CORS
-    Access-Control-Allow-Origin *
-    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
-    
-    # Security headers without CSP (handled by Reflex)
-    X-Content-Type-Options nosniff
-    X-Frame-Options DENY
-    X-XSS-Protection "1; mode=block"
-    Referrer-Policy "strict-origin-when-cross-origin"
-    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	# Enable CORS
+	Access-Control-Allow-Origin *
+	Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+	Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
+
+	# Security headers without CSP (handled by Reflex)
+	X-Content-Type-Options nosniff
+	X-Frame-Options DENY
+	X-XSS-Protection "1; mode=block"
+	Referrer-Policy "strict-origin-when-cross-origin"
+	Permissions-Policy "geolocation=(), microphone=(), camera=()"
 }
 
 # Handle CORS preflight requests
 @cors_preflight method OPTIONS
 handle @cors_preflight {
-    header {
-        Access-Control-Allow-Origin *
-        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
-        Access-Control-Max-Age 86400
-    }
-    respond 204
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
+		Access-Control-Max-Age 86400
+	}
+	respond 204
 }
 
-# Handle WebSocket events
-@websocket {
-    path /_event*
-    header Connection *Upgrade*
-    header Upgrade websocket
+# Handle logo requests first (highest priority)
+@logo path /logo/*
+handle @logo {
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
+# Handle WebSocket events - match path only, let backend handle WebSocket upgrade
+@websocket path /_event*
 handle @websocket {
-    reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 # Handle backend routes
 handle_path /api/* {
-    uri strip_prefix /api
-    reverse_proxy localhost:{$BACKEND_PORT}
+	uri strip_prefix /api
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /stream/* {
-    reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /key/* {
-    reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /content/* {
-    reverse_proxy localhost:{$BACKEND_PORT}
-}
-
-handle_path /logo/* {
-    reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle_path /playlist.m3u8 {
-    reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle /health {
-    reverse_proxy localhost:{$BACKEND_PORT}
+	reverse_proxy localhost:{$BACKEND_PORT}
+}
+
+handle /channels {
+	reverse_proxy localhost:{$BACKEND_PORT}
+}
+
+handle /ping {
+	reverse_proxy localhost:{$BACKEND_PORT}
+}
+
+handle /schedule {
+	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 # Handle all other requests
 handle {
-    # Try static files first
-    try_files {path} /index.html
-    file_server
+	# Try static files first
+	try_files {path} /index.html
+	file_server
 }

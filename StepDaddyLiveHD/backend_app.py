@@ -36,10 +36,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
-app = FastAPI()
+# Import the main FastAPI app with all endpoints
+from StepDaddyLiveHD import backend
 
-# Add CORS middleware
+# Use the existing FastAPI app with all endpoints
+app = backend.fastapi_app
+
+# Ensure CORS middleware is configured for standalone mode
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -48,115 +51,119 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# WebSocket connection manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}
-        self.ping_tasks: Dict[str, asyncio.Task] = {}
-        self.last_ping: Dict[str, float] = {}
-        self.connection_count = 0
+# WebSocket connection manager - DISABLED to avoid conflicts with Reflex
+# This was causing WebSocket disconnection issues with the Reflex frontend
+# Reflex handles its own WebSocket protocol at /_event
+
+# class ConnectionManager:
+#     def __init__(self):
+#         self.active_connections: Dict[str, WebSocket] = {}
+#         self.ping_tasks: Dict[str, asyncio.Task] = {}
+#         self.last_ping: Dict[str, float] = {}
+#         self.connection_count = 0
     
-    async def connect(self, websocket: WebSocket, client_id: str):
-        await websocket.accept()
-        self.active_connections[client_id] = websocket
-        self.connection_count += 1
-        logger.info(f"WebSocket client connected. Total connections: {self.connection_count}")
+#     async def connect(self, websocket: WebSocket, client_id: str):
+#         await websocket.accept()
+#         self.active_connections[client_id] = websocket
+#         self.connection_count += 1
+#         logger.info(f"WebSocket client connected. Total connections: {self.connection_count}")
         
-        # Start ping task for this connection
-        self.ping_tasks[client_id] = asyncio.create_task(self._ping_client(client_id))
+#         # Start ping task for this connection
+#         self.ping_tasks[client_id] = asyncio.create_task(self._ping_client(client_id))
     
-    async def disconnect(self, client_id: str):
-        if client_id in self.active_connections:
-            # Cancel ping task
-            if client_id in self.ping_tasks:
-                self.ping_tasks[client_id].cancel()
-                del self.ping_tasks[client_id]
+#     async def disconnect(self, client_id: str):
+#         if client_id in self.active_connections:
+#             # Cancel ping task
+#             if client_id in self.ping_tasks:
+#                 self.ping_tasks[client_id].cancel()
+#                 del self.ping_tasks[client_id]
             
-            # Remove connection
-            del self.active_connections[client_id]
-            self.connection_count -= 1
-            logger.info(f"WebSocket client disconnected. Total connections: {self.connection_count}")
+#             # Remove connection
+#             del self.active_connections[client_id]
+#             self.connection_count -= 1
+#             logger.info(f"WebSocket client disconnected. Total connections: {self.connection_count}")
     
-    async def _ping_client(self, client_id: str):
-        """Send periodic pings to keep connection alive."""
-        try:
-            while True:
-                if client_id in self.active_connections:
-                    websocket = self.active_connections[client_id]
-                    try:
-                        await websocket.send_text("2")  # Engine.IO ping packet
-                        self.last_ping[client_id] = asyncio.get_event_loop().time()
-                    except Exception as e:
-                        logger.error(f"Error sending ping to client {client_id}: {str(e)}")
-                        await self.disconnect(client_id)
-                        break
-                    await asyncio.sleep(25)  # Send ping every 25 seconds
-                else:
-                    break
-        except asyncio.CancelledError:
-            pass
+#     async def _ping_client(self, client_id: str):
+#         """Send periodic pings to keep connection alive."""
+#         try:
+#             while True:
+#                 if client_id in self.active_connections:
+#                     websocket = self.active_connections[client_id]
+#                     try:
+#                         await websocket.send_text("2")  # Engine.IO ping packet
+#                         self.last_ping[client_id] = asyncio.get_event_loop().time()
+#                     except Exception as e:
+#                         logger.error(f"Error sending ping to client {client_id}: {str(e)}")
+#                         await self.disconnect(client_id)
+#                         break
+#                     await asyncio.sleep(25)  # Send ping every 25 seconds
+#                 else:
+#                     break
+#         except asyncio.CancelledError:
+#             pass
     
-    async def broadcast(self, message: str):
-        """Broadcast message to all connected clients."""
-        disconnected = set()
-        for client_id, websocket in self.active_connections.items():
-            try:
-                await websocket.send_text(message)
-            except Exception as e:
-                logger.error(f"Error broadcasting to client {client_id}: {str(e)}")
-                disconnected.add(client_id)
+#     async def broadcast(self, message: str):
+#         """Broadcast message to all connected clients."""
+#         disconnected = set()
+#         for client_id, websocket in self.active_connections.items():
+#             try:
+#                 await websocket.send_text(message)
+#             except Exception as e:
+#                 logger.error(f"Error broadcasting to client {client_id}: {str(e)}")
+#                 disconnected.add(client_id)
         
-        # Clean up disconnected clients
-        for client_id in disconnected:
-            await self.disconnect(client_id)
+#         # Clean up disconnected clients
+#         for client_id in disconnected:
+#             await self.disconnect(client_id)
 
-manager = ConnectionManager()
+# manager = ConnectionManager()
 
-@app.websocket("/_event/")
-async def websocket_endpoint(websocket: WebSocket):
-    client_id = str(id(websocket))
-    try:
-        # Accept connection
-        await manager.connect(websocket, client_id)
+# Custom WebSocket endpoint disabled - conflicts with Reflex WebSocket protocol
+# @app.websocket("/_event/")
+# async def websocket_endpoint(websocket: WebSocket):
+#     client_id = str(id(websocket))
+#     try:
+#         # Accept connection
+#         await manager.connect(websocket, client_id)
         
-        # Send Engine.IO open packet
-        await websocket.send_text("0{\"sid\":\"" + client_id + "\",\"upgrades\":[],\"pingInterval\":25000,\"pingTimeout\":20000}")
+#         # Send Engine.IO open packet
+#         await websocket.send_text("0{\"sid\":\"" + client_id + "\",\"upgrades\":[],\"pingInterval\":25000,\"pingTimeout\":20000}")
         
-        # Handle messages
-        while True:
-            try:
-                message = await websocket.receive_text()
+#         # Handle messages
+#         while True:
+#             try:
+#                 message = await websocket.receive_text()
                 
-                # Handle Engine.IO packets
-                if message == "2probe":  # Engine.IO probe packet
-                    await websocket.send_text("3probe")  # Send probe response
-                elif message == "5":  # Engine.IO upgrade packet
-                    await websocket.send_text("6")  # Send upgrade confirmation
-                elif message == "3":  # Engine.IO pong packet
-                    manager.last_ping[client_id] = asyncio.get_event_loop().time()
-                else:
-                    # Handle regular messages
-                    try:
-                        # Parse message and broadcast state updates
-                        data = json.loads(message)
-                        if "event" in data:
-                            await manager.broadcast(json.dumps({
-                                "event": data["event"],
-                                "data": data.get("data", {})
-                            }))
-                    except json.JSONDecodeError:
-                        pass  # Ignore invalid JSON
+#                 # Handle Engine.IO packets
+#                 if message == "2probe":  # Engine.IO probe packet
+#                     await websocket.send_text("3probe")  # Send probe response
+#                 elif message == "5":  # Engine.IO upgrade packet
+#                     await websocket.send_text("6")  # Send upgrade confirmation
+#                 elif message == "3":  # Engine.IO pong packet
+#                     manager.last_ping[client_id] = asyncio.get_event_loop().time()
+#                 else:
+#                     # Handle regular messages
+#                     try:
+#                         # Parse message and broadcast state updates
+#                         data = json.loads(message)
+#                         if "event" in data:
+#                             await manager.broadcast(json.dumps({
+#                                 "event": data["event"],
+#                                 "data": data.get("data", {})
+#                             }))
+#                     except json.JSONDecodeError:
+#                         pass  # Ignore invalid JSON
                     
-            except WebSocketDisconnect:
-                break
-            except Exception as e:
-                logger.error(f"Error handling message from client {client_id}: {str(e)}")
-                break
+#             except WebSocketDisconnect:
+#                 break
+#             except Exception as e:
+#                 logger.error(f"Error handling message from client {client_id}: {str(e)}")
+#                 break
                 
-    except Exception as e:
-        logger.error(f"Error in websocket connection {client_id}: {str(e)}")
-    finally:
-        await manager.disconnect(client_id)
+#     except Exception as e:
+#         logger.error(f"Error in websocket connection {client_id}: {str(e)}")
+#     finally:
+#         await manager.disconnect(client_id)
 
 def run():
     """Run the backend server."""
@@ -168,11 +175,12 @@ def run():
         loop="asyncio",
         ws_ping_interval=None,  # We handle pings ourselves
         ws_ping_timeout=None,
-        timeout_keep_alive=30,
-        backlog=2048,
-        limit_concurrency=1000,
-        limit_max_requests=10000,
-        timeout_graceful_shutdown=10,
+        timeout_keep_alive=60,  # Longer keepalive for streaming
+        backlog=4096,  # Larger backlog for more concurrent connections
+        limit_concurrency=2000,  # Higher concurrency limit
+        limit_max_requests=20000,  # More requests per worker
+        timeout_graceful_shutdown=15,
+        h11_max_incomplete_event_size=16 * 1024 * 1024,  # 16MB for large streaming chunks
     )
     server = uvicorn.Server(config)
     server.run()

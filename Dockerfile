@@ -42,8 +42,7 @@ ENV PORT=${PORT:-3232} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
     SOCKS5=${SOCKS5:-""} \
-    REFLEX_ENV=prod \
-    REFLEX_FRONTEND_ONLY=true
+    REFLEX_ENV=prod
 
 # Initialize Reflex and build frontend
 RUN echo "Building frontend with API_URL=$API_URL" && \
@@ -97,7 +96,6 @@ ENV PATH="/app/.venv/bin:$PATH" \
     SOCKS5=${SOCKS5:-""} \
     WORKERS=${WORKERS:-6} \
     REFLEX_ENV=prod \
-    REFLEX_FRONTEND_ONLY=true \
     REFLEX_SKIP_COMPILE=1
 
 WORKDIR /app

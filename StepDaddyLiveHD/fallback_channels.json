@@ -1,14 +1,37 @@
 [
   {
     "id": "1",
-    "name": "Test Channel 1",
-    "tags": ["test"],
-    "logo": "/missing.png"
+    "name": "ESPN",
+    "logo": "/missing.png",
+    "tags": ["sports"],
+    "is_live": true
   },
   {
     "id": "2", 
-    "name": "Test Channel 2",
-    "tags": ["test"],
-    "logo": "/missing.png"
+    "name": "CNN",
+    "logo": "/missing.png",
+    "tags": ["news"],
+    "is_live": true
+  },
+  {
+    "id": "3",
+    "name": "HBO",
+    "logo": "/missing.png", 
+    "tags": ["entertainment"],
+    "is_live": true
+  },
+  {
+    "id": "4",
+    "name": "Discovery Channel",
+    "logo": "/missing.png",
+    "tags": ["documentary"],
+    "is_live": true
+  },
+  {
+    "id": "5",
+    "name": "National Geographic",
+    "logo": "/missing.png",
+    "tags": ["documentary", "nature"],
+    "is_live": true
   }
-] 
+]
