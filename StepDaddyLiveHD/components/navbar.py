@@ -30,11 +30,51 @@ def navbar_icons_menu_item(text: str, icon: str, url: str, external: bool = Fals
 def navbar(search=None) -> rx.Component:
     return rx.box(
         rx.card(
-            rx.desktop_only(
+            # Desktop navbar
+            rx.hstack(
+                rx.vstack(
+                    rx.text(
+                        config.app_name, size="8", weight="bold", key="navbar-title"
+                    ),
+                    rx.box(
+                        background_color="#fa5252",
+                        width="100%",
+                        padding="2.5px",
+                    ),
+                    align_items="center",
+                    gap="0",
+                    on_click=rx.redirect("/")
+                ),
+                rx.cond(
+                    search,
+                    search,
+                    rx.text(
+                        "Watch ",
+                        rx.code("live"),
+                        " TV channels",
+                        align="center",
+                        size="4",
+                        padding="5px",
+                    ),
+                ),
+                rx.hstack(
+                    navbar_icons_item("Schedule", "calendar-sync", "/schedule"),
+                    navbar_icons_item("playlist.m3u8", "file-down", "/playlist"),
+                    navbar_icons_item("Github", "github", "https://github.com/gookie-dev/StepDaddyLiveHD", True),
+                    spacing="6",
+                    class_name="desktop-nav-items",
+                ),
+                justify="between",
+                align_items="center",
+                width="100%",
+                class_name="desktop-navbar",
+            ),
+            # Mobile navbar
+            rx.vstack(
                 rx.hstack(
                     rx.vstack(
                         rx.text(
-                            config.app_name, size="8", weight="bold"
+                            config.app_name, size="6", weight="bold", key="navbar-title-mobile"
                         ),
                         rx.box(
                             background_color="#fa5252",
@@ -45,78 +85,30 @@ def navbar(search=None) -> rx.Component:
                         gap="0",
                         on_click=rx.redirect("/")
                     ),
-                    rx.cond(
-                        search,
-                        search,
-                        rx.text(
-                            "Watch ",
-                            rx.code("live"),
-                            " TV channels",
-                            align="center",
-                            size="4",
-                            padding="5px",
+                    rx.menu.root(
+                        rx.menu.trigger(
+                            rx.icon("menu", size=24)
                         ),
+                        rx.menu.content(
+                            navbar_icons_menu_item("Schedule", "calendar-sync", "/schedule"),
+                            navbar_icons_menu_item("playlist.m3u8", "file-down", "/playlist"),
+                            navbar_icons_menu_item("Github", "github", "https://github.com/gookie-dev/StepDaddyLiveHD", True),
+                        ),
+                        justify="end",
                     ),
-                    rx.hstack(
-                        navbar_icons_item("Schedule", "calendar-sync", "/schedule"),
-                        navbar_icons_item("playlist.m3u8", "file-down", "/playlist"),
-                        navbar_icons_item("Github", "github", "https://github.com/gookie-dev/StepDaddyLiveHD", True),
-                        spacing="6",
-                    ),
-                    justify=rx.breakpoints(initial="between"),
+                    justify="between",
                     align_items="center",
+                    width="100%",
                 ),
-            ),
-            rx.mobile_and_tablet(
-                rx.vstack(
-                    rx.hstack(
-                        rx.vstack(
-                            rx.text(
-                                config.app_name, size="7", weight="bold"
-                            ),
-                            rx.box(
-                                background_color="#fa5252",
-                                width="100%",
-                                padding="2.5px",
-                            ),
-                            align_items="center",
-                            gap="0",
-                            on_click=rx.redirect("/")
-                        ),
-                        rx.tablet_only(
-                            rx.cond(
-                                search,
-                                search,
-                                rx.fragment(),
-                            ),
-                        ),
-                        rx.menu.root(
-                            rx.menu.trigger(
-                                rx.icon("menu", size=30)
-                            ),
-                            rx.menu.content(
-                                navbar_icons_menu_item("Schedule", "calendar-sync", "/schedule"),
-                                navbar_icons_menu_item("playlist.m3u8", "file-down", "/playlist"),
-                                navbar_icons_menu_item("Github", "github", "https://github.com/gookie-dev/StepDaddyLiveHD", True),
-                            ),
-                            justify="end",
-                        ),
-                        justify=rx.breakpoints(initial="between"),
-                        align_items="center",
+                rx.cond(
+                    search,
+                    rx.box(
+                        search,
                         width="100%",
                     ),
-                    rx.cond(
-                        search,
-                        rx.mobile_only(
-                            rx.box(
-                                search,
-                                width="100%",
-                            ),
-                            width="100%",
-                        ),
-                        rx.fragment(),
-                    ),
+                    rx.fragment(),
                 ),
+                class_name="mobile-navbar",
             ),
             padding="1em",
             width="100%",
@@ -126,4 +118,25 @@ def navbar(search=None) -> rx.Component:
         top="0px",
         z_index="2",
         width="100%",
+        key="main-navbar",
+        style={
+            ".desktop-navbar": {
+                "display": "flex",
+                "@media (max-width: 768px)": {
+                    "display": "none",
+                }
+            },
+            ".mobile-navbar": {
+                "display": "none",
+                "@media (max-width: 768px)": {
+                    "display": "flex",
+                }
+            },
+            ".desktop-nav-items": {
+                "display": "flex",
+                "@media (max-width: 768px)": {
+                    "display": "none",
+                }
+            }
+        }
     )

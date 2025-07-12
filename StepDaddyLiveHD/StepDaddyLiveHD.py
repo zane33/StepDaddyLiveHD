@@ -20,7 +20,6 @@ class State(rx.State):
     last_update: str = ""
     connection_status: str = "connecting"
     channels_count: int = 0
-    filtered_channels_count: int = 0
     error_message: str = ""  # Track error messages
     
     # Live updates
@@ -37,11 +36,14 @@ class State(rx.State):
     def filtered_channels(self) -> List[Channel]:
         """Filter channels based on search query."""
         if not self.search_query:
-            filtered = self.channels
+            return self.channels
         else:
-            filtered = [ch for ch in self.channels if self.search_query.lower() in ch.name.lower()]
-        self.filtered_channels_count = len(filtered)
-        return filtered
+            return [ch for ch in self.channels if self.search_query.lower() in ch.name.lower()]
+    
+    @rx.var
+    def filtered_channels_count(self) -> int:
+        """Get count of filtered channels."""
+        return len(self.filtered_channels)
     
     @rx.var
     def status_color(self) -> str:
@@ -216,15 +218,15 @@ class State(rx.State):
         self.status_bar_visible = False
     
     @rx.event
-    def on_load(self):
+    async def on_load(self):
         """Initial load when page loads."""
         # Set WebSocket as connected since Reflex manages the connection
         self.ws_connected = True
         self.connection_status = "connecting"
         # Hide status bar after initial load
         self.status_bar_visible = False
-        # Return the async load_channels method to trigger state update
-        return State.load_channels
+        # Directly call load_channels to ensure it runs
+        await self.load_channels()
 
     async def handle_channel_update(self):
         """Handle real-time channel updates."""

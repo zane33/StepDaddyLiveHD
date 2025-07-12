@@ -9,11 +9,14 @@ media_player = MediaPlayer.create
 
 class WatchState(rx.State):
     is_loaded: bool = False
+    _cache_buster: int = 0
 
     @rx.event
     def on_load(self):
         """Initialize watch page state on load."""
         self.is_loaded = False
+        # Increment cache buster to ensure proper component refresh
+        self._cache_buster += 1
 
     @rx.var
     def route_channel_id(self) -> str:
@@ -82,7 +85,7 @@ def uri_card() -> rx.Component:
 
 @rx.page("/watch/[channel_id]", on_load=WatchState.on_load)
 def watch() -> rx.Component:
-    return rx.box(
+    return rx.fragment(
         navbar(),
         rx.container(
             rx.cond(
