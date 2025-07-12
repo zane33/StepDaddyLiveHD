@@ -40,17 +40,9 @@ fastapi_app = FastAPI(
 # Add CORS middleware with consolidated settings
 fastapi_app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        api_url,  # Frontend URL from environment
-        ws_url,   # WebSocket URL with backend port
-        "http://0.0.0.0:3232",     # Local development frontend
-        f"http://0.0.0.0:{backend_port}",  # Local development backend
-        "http://127.0.0.1:3232",    # Alternative local frontend
-        f"http://127.0.0.1:{backend_port}",  # Alternative local backend
-        "*",  # Allow all origins for WebSocket
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allow all origins for docker deployment flexibility
+    allow_credentials=False,  # Can't use credentials with wildcard origins
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
 )

@@ -31,7 +31,7 @@ class WatchState(rx.State):
 
     @rx.var
     def url(self) -> str:
-        return f"{config.api_url}/api/stream/{self.route_channel_id}.m3u8"
+        return f"/api/stream/{self.route_channel_id}.m3u8"
 
 
 def uri_card() -> rx.Component:

@@ -128,7 +128,7 @@ class StepDaddy:
         meta = self._meta.get(clean_channel_name, {})
         logo = meta.get("logo", "/missing.png")
         if logo.startswith("http"):
-            logo = f"{config.api_url}/api/logo/{urlsafe_base64(logo)}"
+            logo = f"/api/logo/{urlsafe_base64(logo)}"
         return Channel(id=channel_id, name=channel_name, tags=meta.get("tags", []), logo=logo)
 
     async def stream(self, channel_id: str):
@@ -170,9 +170,9 @@ class StepDaddy:
                 for line in m3u8.text.split("\n"):
                     if line.startswith("#EXT-X-KEY:"):
                         original_url = re.search(r'URI="(.*?)"', line).group(1)
-                        line = line.replace(original_url, f"{config.api_url}/api/key/{encrypt(original_url)}/{encrypt(urlparse(source_url).netloc)}")
+                        line = line.replace(original_url, f"/api/key/{encrypt(original_url)}/{encrypt(urlparse(source_url).netloc)}")
                     elif line.startswith("http") and config.proxy_content:
-                        line = f"{config.api_url}/api/content/{encrypt(line)}"
+                        line = f"/api/content/{encrypt(line)}"
                     m3u8_data += line + "\n"
                 return m3u8_data
         except Exception as e:
@@ -204,7 +204,7 @@ class StepDaddy:
         data = "#EXTM3U\n"
         for channel in self.channels:
             entry = f" tvg-logo=\"{channel.logo}\",{channel.name}" if channel.logo else f",{channel.name}"
-            data += f"#EXTINF:-1{entry}\n{config.api_url}/api/stream/{channel.id}.m3u8\n"
+            data += f"#EXTINF:-1{entry}\n/api/stream/{channel.id}.m3u8\n"
         return data
 
     async def schedule(self):

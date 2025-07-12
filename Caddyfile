@@ -14,11 +14,6 @@ root * /srv
 
 # Global headers
 header {
-	# Enable CORS
-	Access-Control-Allow-Origin *
-	Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-	Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
-
 	# Security headers without CSP (handled by Reflex)
 	X-Content-Type-Options nosniff
 	X-Frame-Options DENY
@@ -27,17 +22,7 @@ header {
 	Permissions-Policy "geolocation=(), microphone=(), camera=()"
 }
 
-# Handle CORS preflight requests
-@cors_preflight method OPTIONS
-handle @cors_preflight {
-	header {
-		Access-Control-Allow-Origin *
-		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, Sec-WebSocket-Protocol"
-		Access-Control-Max-Age 86400
-	}
-	respond 204
-}
+# CORS is handled by FastAPI backend - no need for Caddy CORS
 
 # Handle playlist.m3u8 endpoint first (highest priority)
 handle /playlist.m3u8 {
