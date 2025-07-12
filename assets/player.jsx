@@ -60,7 +60,7 @@ export function Player({ title, src }) {
         title={title}
         src={src}
         viewType='video'
-        streamType='ll-live'
+        streamType='live'
         logLevel='warn'
         playsInline
         autoplay
