@@ -39,6 +39,11 @@ handle @cors_preflight {
 	respond 204
 }
 
+# Handle playlist.m3u8 endpoint first (highest priority)
+handle /playlist.m3u8 {
+	reverse_proxy localhost:{$BACKEND_PORT}
+}
+
 # Handle logo requests first (highest priority)
 @logo path /logo/*
 handle @logo {
@@ -78,10 +83,6 @@ handle_path /content/* {
 		header_up X-Real-IP {remote_host}
 		header_down -Server
 	}
-}
-
-handle_path /playlist.m3u8 {
-	reverse_proxy localhost:{$BACKEND_PORT}
 }
 
 handle /health {

@@ -329,7 +329,7 @@ def channels_grid() -> rx.Component:
     """Channels grid with loading states."""
     return rx.center(
         rx.cond(
-            State.is_loading & (State.channels_count == 0),
+            State.is_loading,
             rx.vstack(
                 rx.spinner(size="3"),
                 rx.text("Loading channels...", size="2", color="gray"),

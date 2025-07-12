@@ -315,6 +315,17 @@ def playlist():
         }
     )
 
+@fastapi_app.get("/api/playlist.m3u8")
+def api_playlist():
+    return Response(
+        content=step_daddy.playlist(), 
+        media_type="application/vnd.apple.mpegurl", 
+        headers={
+            "Content-Disposition": "attachment; filename=playlist.m3u8",
+            "Cache-Control": "public, max-age=300"
+        }
+    )
+
 async def get_schedule():
     return await step_daddy.schedule()
 
