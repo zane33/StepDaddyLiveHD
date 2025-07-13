@@ -1,4 +1,4 @@
-# StepDaddyLiveHD 🚀
+# freesky 🚀
 
 A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you to watch over 1,000 📺 TV channels and search for live events or sports matches ⚽🏀. Stream directly in your browser 🌐 or through any media player client 🎶. You can also download the entire playlist (`playlist.m3u8`) and integrate it with platforms like Jellyfin 🍇 or other IPTV media players.
 
@@ -15,7 +15,7 @@ A self-hosted IPTV proxy built with [Reflex](https://reflex.dev), enabling you t
 
 ## 📦 Dependencies
 
-StepDaddyLiveHD relies on several key Python packages, each serving a specific purpose in the application:
+freesky relies on several key Python packages, each serving a specific purpose in the application:
 
 ### Core Dependencies
 
@@ -125,13 +125,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${PORT:-3232}:${PORT:-3232}"
+      - "${PORT:-3000}:${PORT:-3000}"
       - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
       - "2019:2019"  # Caddy admin port
     environment:
-      - PORT=${PORT:-3232}
+      - PORT=${PORT:-3000}
       - BACKEND_PORT=${BACKEND_PORT:-8005}
-      - API_URL=http://localhost:${PORT:-3232}
+      - API_URL=http://localhost:${PORT:-3000}
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
@@ -147,14 +147,14 @@ services:
 
 ## 🔄 Frontend-Backend Architecture
 
-StepDaddyLiveHD uses a modern architecture built with **Reflex** (Python web framework) that provides seamless real-time communication between frontend and backend. Here's how the components interact:
+freesky uses a modern architecture built with **Reflex** (Python web framework) that provides seamless real-time communication between frontend and backend. Here's how the components interact:
 
 ### 🏗️ Architecture Overview
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Caddy Proxy   │    │   Backend       │
-│   (Reflex App)  │◄──►│   (Port 3232)   │◄──►│   (FastAPI)     │
+│   (Reflex App)  │◄──►│   (Port 3000)   │◄──►│   (FastAPI)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │                       │                       │
@@ -306,7 +306,7 @@ User → Reflex Frontend → Backend → Stream URL → Frontend → External St
 
 #### **API_URL Configuration**
 - **Purpose**: Defines how frontend communicates with backend
-- **Local Setup**: `http://192.168.1.100:3232`
+- **Local Setup**: `http://192.168.1.100:3000`
 - **Production**: `https://yourdomain.com`
 - **Impact**: Affects all API calls and WebSocket connections
 

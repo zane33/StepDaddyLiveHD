@@ -1,8 +1,8 @@
 import reflex as rx
 from rxconfig import config
-from StepDaddyLiveHD import backend
-from StepDaddyLiveHD.components import navbar, MediaPlayer
-from StepDaddyLiveHD.step_daddy import Channel
+from freesky import backend
+from freesky.components import navbar, MediaPlayer
+from freesky.free_sky import Channel
 
 media_player = MediaPlayer.create
 

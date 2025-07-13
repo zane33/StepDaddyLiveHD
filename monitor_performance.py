@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance monitoring script for StepDaddyLiveHD
+Performance monitoring script for freesky
 """
 import asyncio
 import aiohttp
@@ -84,12 +84,12 @@ async def main():
     """Main monitoring function"""
     if len(sys.argv) < 2:
         print("Usage: python monitor_performance.py <base_url>")
-        print("Example: python monitor_performance.py http://localhost:3232")
+        print("Example: python monitor_performance.py http://localhost:3000")
         sys.exit(1)
     
     base_url = sys.argv[1].rstrip('/')
     
-    print("🚀 StepDaddyLiveHD Performance Monitor")
+    print("🚀 freesky Performance Monitor")
     print("=" * 50)
     
     # Test basic endpoints

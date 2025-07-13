@@ -35,10 +35,10 @@ RUN dos2unix /app/start.sh && chmod +x /app/start.sh
 ARG PORT BACKEND_PORT API_URL DADDYLIVE_URI PROXY_CONTENT SOCKS5
 
 # Set environment variables for the build
-ENV PORT=${PORT:-3232} \
+ENV PORT=${PORT:-3000} \
     BACKEND_PORT=${BACKEND_PORT:-8005} \
     BACKEND_URI=${BACKEND_URI:-http://localhost:${BACKEND_PORT:-8005}} \
-    API_URL=${API_URL:-http://localhost:${PORT:-3232}} \
+    API_URL=${API_URL:-http://localhost:${PORT:-3000}} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     PROXY_CONTENT=${PROXY_CONTENT:-TRUE} \
     SOCKS5=${SOCKS5:-""} \
@@ -63,7 +63,7 @@ RUN echo "Building frontend with API_URL=$API_URL" && \
      ls -la /srv/) || \
     (echo "Frontend build failed, creating minimal frontend" && \
      mkdir -p /srv && \
-     echo "<html><body><h1>StepDaddyLiveHD</h1><p>Frontend build failed, but backend is running.</p><p>Check the Docker build logs for more information.</p></body></html>" > /srv/index.html && \
+     echo "<html><body><h1>freesky</h1><p>Frontend build failed, but backend is running.</p><p>Check the Docker build logs for more information.</p></body></html>" > /srv/index.html && \
      echo "Minimal frontend created")
 
 # Final image with only necessary files
@@ -85,10 +85,10 @@ RUN node --version && npm --version
 
 ARG PORT BACKEND_PORT API_URL DADDYLIVE_URI PROXY_CONTENT SOCKS5
 ENV PATH="/app/.venv/bin:$PATH" \
-    PORT=${PORT:-3232} \
+    PORT=${PORT:-3000} \
     BACKEND_PORT=${BACKEND_PORT:-8005} \
     BACKEND_URI=${BACKEND_URI:-http://localhost:${BACKEND_PORT:-8005}} \
-    API_URL=${API_URL:-http://localhost:${PORT:-3232}} \
+    API_URL=${API_URL:-http://localhost:${PORT:-3000}} \
     DADDYLIVE_URI=${DADDYLIVE_URI:-"https://thedaddy.click"} \
     REDIS_URL=redis://localhost \
     PYTHONUNBUFFERED=1 \

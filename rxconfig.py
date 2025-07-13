@@ -1,11 +1,11 @@
 """
-Reflex configuration for StepDaddyLiveHD.
+Reflex configuration for freesky.
 """
 import os
 import reflex as rx
 
 # Get environment variables with defaults
-frontend_port = int(os.environ.get("PORT", "3232"))
+frontend_port = int(os.environ.get("PORT", "3000"))
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
 api_url = os.environ.get("API_URL", f"http://localhost:{frontend_port}")  # Frontend interface with integrated backend
 backend_uri = os.environ.get("BACKEND_URI", f"http://localhost:{backend_port}")  # Backend service
@@ -15,7 +15,7 @@ socks5 = os.environ.get("SOCKS5", "")
 
 # Create config
 config = rx.Config(
-    app_name="StepDaddyLiveHD",
+    app_name="freesky",
     api_url=api_url,  # Frontend interface where clients connect
     backend_port=backend_port,  # Use proper backend port
     env=rx.Env.PROD,  # Use production mode

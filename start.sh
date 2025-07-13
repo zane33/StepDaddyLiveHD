@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Starting StepDaddyLiveHD services..."
+echo "Starting freesky services..."
 
 # Check internet connectivity
 echo "Checking internet connectivity..."

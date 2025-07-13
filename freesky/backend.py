@@ -5,7 +5,7 @@ import logging
 import time
 from functools import lru_cache
 from typing import Optional, Dict, Tuple
-from StepDaddyLiveHD.step_daddy import StepDaddy, Channel
+from freesky.free_sky import StepDaddy, Channel
 from fastapi import Response, status, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Get environment variables
-frontend_port = int(os.environ.get("PORT", "3232"))
+frontend_port = int(os.environ.get("PORT", "3000"))
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
 api_url = os.environ.get("API_URL", f"http://localhost:{frontend_port}")  # Use frontend port for integrated API
 
@@ -32,7 +32,7 @@ ws_url = urlunparse(parsed_url._replace(netloc=f"{parsed_url.hostname}:{backend_
 
 # Create FastAPI app with better configuration
 fastapi_app = FastAPI(
-    title="StepDaddyLiveHD API",
+    title="freesky API",
     description="IPTV proxy API",
     version="1.0.0"
 )
@@ -59,7 +59,7 @@ client = httpx.AsyncClient(
     follow_redirects=True
 )
 
-step_daddy = StepDaddy()
+free_sky = StepDaddy()
 
 # Use OrderedDict for LRU cache behavior
 class LRUCache(OrderedDict):
@@ -146,7 +146,7 @@ async def stream(channel_id: str):
         # Generate new stream with timeout
         try:
             stream_data = await asyncio.wait_for(
-                step_daddy.stream(channel_id),
+                free_sky.stream(channel_id),
                 timeout=10.0  # 10 second timeout for stream generation
             )
         except asyncio.TimeoutError:
@@ -175,7 +175,7 @@ async def key(url: str, host: str):
     try:
         # Add timeout to key retrieval
         key_data = await asyncio.wait_for(
-            step_daddy.key(url, host),
+            free_sky.key(url, host),
             timeout=5.0  # 5 second timeout for key retrieval
         )
         return Response(
@@ -198,7 +198,7 @@ async def content(path: str):
     try:
         async with _stream_semaphore:  # Control concurrent streams
             async def proxy_stream():
-                async with client.stream("GET", step_daddy.content_url(path), timeout=30) as response:
+                async with client.stream("GET", free_sky.content_url(path), timeout=30) as response:
                     async for chunk in response.aiter_bytes(chunk_size=4 * 1024):  # Optimized chunks for lower latency
                         yield chunk
             return StreamingResponse(
@@ -227,10 +227,10 @@ async def update_channels():
             
             while not success and retries < max_retries:
                 try:
-                    await step_daddy.load_channels()
-                    if step_daddy.channels:
+                    await free_sky.load_channels()
+                    if free_sky.channels:
                         success = True
-                        logger.info(f"Successfully loaded {len(step_daddy.channels)} channels")
+                        logger.info(f"Successfully loaded {len(free_sky.channels)} channels")
                         # Clear stream cache when channels are updated
                         stream_cache.clear()
                         await asyncio.sleep(update_interval)
@@ -244,13 +244,13 @@ async def update_channels():
             
             if not success:
                 # All retries failed, try fallback
-                if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
+                if os.path.exists("freesky/fallback_channels.json"):
                     logger.info("Loading channels from fallback file...")
-                    with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
+                    with open("freesky/fallback_channels.json", "r") as f:
                         fallback_data = json.load(f)
-                        step_daddy.channels = [Channel(**channel_data) for channel_data in fallback_data]
-                    if step_daddy.channels:
-                        logger.info(f"Loaded {len(step_daddy.channels)} channels from fallback")
+                        free_sky.channels = [Channel(**channel_data) for channel_data in fallback_data]
+                    if free_sky.channels:
+                        logger.info(f"Loaded {len(free_sky.channels)} channels from fallback")
                     else:
                         logger.error("No channels in fallback file")
                 else:
@@ -269,16 +269,16 @@ async def update_channels():
 def get_channels():
     """Get current channels with fallback handling."""
     try:
-        logger.debug("Attempting to get channels from step_daddy instance")
-        channels = step_daddy.channels
+        logger.debug("Attempting to get channels from free_sky instance")
+        channels = free_sky.channels
         if channels:
             logger.info(f"Successfully retrieved {len(channels)} channels")
             return channels
         
         logger.warning("No channels available from primary source, trying fallback")
         # Try loading from fallback synchronously if no channels available
-        if os.path.exists("StepDaddyLiveHD/fallback_channels.json"):
-            with open("StepDaddyLiveHD/fallback_channels.json", "r") as f:
+        if os.path.exists("freesky/fallback_channels.json"):
+            with open("freesky/fallback_channels.json", "r") as f:
                 fallback_data = json.load(f)
                 channels = [Channel(**channel_data) for channel_data in fallback_data]
             logger.info(f"Loaded {len(channels)} channels from fallback in get_channels()")
@@ -299,7 +299,7 @@ def get_channel(channel_id) -> Optional[Channel]:
 @fastapi_app.get("/playlist.m3u8")
 def playlist():
     return Response(
-        content=step_daddy.playlist(), 
+        content=free_sky.playlist(), 
         media_type="application/vnd.apple.mpegurl", 
         headers={
             "Content-Disposition": "attachment; filename=playlist.m3u8",
@@ -310,7 +310,7 @@ def playlist():
 @fastapi_app.get("/api/playlist.m3u8")
 def api_playlist():
     return Response(
-        content=step_daddy.playlist(), 
+        content=free_sky.playlist(), 
         media_type="application/vnd.apple.mpegurl", 
         headers={
             "Content-Disposition": "attachment; filename=playlist.m3u8",
@@ -319,7 +319,7 @@ def api_playlist():
     )
 
 async def get_schedule():
-    return await step_daddy.schedule()
+    return await free_sky.schedule()
 
 @fastapi_app.get("/logo/{logo}")
 async def logo(logo: str):
@@ -354,13 +354,13 @@ async def logo(logo: str):
 
 @fastapi_app.get("/ping")
 async def ping():
-    return {"status": "ok", "channels_count": len(step_daddy.channels)}
+    return {"status": "ok", "channels_count": len(free_sky.channels)}
 
 @fastapi_app.get("/health")
 async def health():
     return {
         "status": "healthy",
-        "channels_count": len(step_daddy.channels),
+        "channels_count": len(free_sky.channels),
         "cache_size": len(stream_cache),
         "uptime": time.time()
     }

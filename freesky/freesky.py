@@ -2,10 +2,10 @@ import reflex as rx
 import asyncio
 import time
 from typing import List, Optional
-import StepDaddyLiveHD.pages
-from StepDaddyLiveHD import backend
-from StepDaddyLiveHD.components import navbar, card
-from StepDaddyLiveHD.step_daddy import Channel
+import freesky.pages
+from freesky import backend
+from freesky.components import navbar, card
+from freesky.free_sky import Channel
 
 
 class State(rx.State):
@@ -88,7 +88,7 @@ class State(rx.State):
             
             try:
                 # Try to connect to the API endpoint through proxy
-                frontend_port = os.environ.get("PORT", "3232")
+                frontend_port = os.environ.get("PORT", "3000")
                 api_url = f"http://localhost:{frontend_port}"
                 async with httpx.AsyncClient(timeout=10.0, base_url=api_url) as client:
                     response = await client.get("/api/channels")
@@ -126,7 +126,7 @@ class State(rx.State):
                 except Exception as backend_error:
                     print(f"Backend error: {backend_error}")
                     # Try to load from fallback file
-                    fallback_path = "StepDaddyLiveHD/fallback_channels.json"
+                    fallback_path = "freesky/fallback_channels.json"
                     if os.path.exists(fallback_path):
                         with open(fallback_path, "r") as f:
                             fallback_data = json.load(f)

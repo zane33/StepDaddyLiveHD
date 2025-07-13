@@ -40,7 +40,7 @@ class StepDaddy:
         self._base_url = config.daddylive_uri
         self.channels = []
         self._load_lock = asyncio.Lock()  # Prevent concurrent channel loading
-        with open("StepDaddyLiveHD/meta.json", "r") as f:
+        with open("freesky/meta.json", "r") as f:
             self._meta = json.load(f)
 
     def _headers(self, referer: str = None, origin: str = None):

@@ -1,6 +1,6 @@
 import reflex as rx
 from rxconfig import config
-from StepDaddyLiveHD.components import navbar
+from freesky.components import navbar
 
 
 @rx.page("/playlist")
@@ -27,9 +27,9 @@ def playlist() -> rx.Component:
                                 background_color=rx.color("accent", 7),
                             ),
                         ),
-                        rx.heading("Welcome to StepDaddyLiveHD", size="7", margin_bottom="1rem"),
+                        rx.heading("Welcome to freesky", size="7", margin_bottom="1rem"),
                         rx.text(
-                            "StepDaddyLiveHD allows you to watch various TV channels via IPTV. "
+                            "freesky allows you to watch various TV channels via IPTV. "
                             "You can download the playlist file below and use it with your favorite media player.",
                         ),
 

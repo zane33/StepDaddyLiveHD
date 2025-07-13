@@ -1,5 +1,5 @@
 """
-Backend-only entry point for StepDaddyLiveHD.
+Backend-only entry point for freesky.
 This creates a backend app for API endpoints and WebSocket communication.
 """
 
@@ -24,7 +24,7 @@ os.environ["REFLEX_ENV"] = "prod"
 os.environ["REFLEX_SKIP_COMPILE"] = "1"  # Skip frontend compilation in production
 
 # Get environment variables
-api_url = os.environ.get("API_URL", "http://localhost:3232")  # Frontend interface
+api_url = os.environ.get("API_URL", "http://localhost:3000")  # Frontend interface
 backend_uri = os.environ.get("BACKEND_URI", "http://localhost:8005")  # Backend service
 backend_port = int(os.environ.get("BACKEND_PORT", "8005"))
 workers = int(os.environ.get("WORKERS", "3"))
@@ -37,7 +37,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import the main FastAPI app with all endpoints
-from StepDaddyLiveHD import backend
+from freesky import backend
 
 # Use the existing FastAPI app with all endpoints
 app = backend.fastapi_app

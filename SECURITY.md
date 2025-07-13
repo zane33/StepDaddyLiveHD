@@ -1,6 +1,6 @@
 # Security Configuration Guide
 
-This document outlines the security configurations and best practices implemented in StepDaddyLiveHD.
+This document outlines the security configurations and best practices implemented in freesky.
 
 ## Content Security Policy (CSP)
 
@@ -113,13 +113,13 @@ networks:
 
 1. **Stream Request Limiting**
    ```python
-   # Configured in step_daddy.py
+   # Configured in free_sky.py
    self._stream_semaphore = asyncio.Semaphore(10)  # Limit concurrent streams
    ```
 
 2. **Connection Timeouts**
    ```python
-   # Configured in step_daddy.py
+   # Configured in free_sky.py
    session_config = {
        "timeout": 30,  # 30 second timeout
        "max_redirects": 5  # Limit redirect chains

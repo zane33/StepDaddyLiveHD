@@ -4,14 +4,14 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${PORT:-3232}:${PORT:-3232}"
+      - "${PORT:-3000}:${PORT:-3000}"
       - "${BACKEND_PORT:-8005}:${BACKEND_PORT:-8005}"
       - "2019:2019"  # Expose Caddy admin port for debugging
     environment:
-      - PORT=${PORT:-3232}
+      - PORT=${PORT:-3000}
       - BACKEND_PORT=${BACKEND_PORT:-8005}
       - BACKEND_URI=http://localhost:${BACKEND_PORT:-8005}
-      - API_URL=http://localhost:${PORT:-3232}
+      - API_URL=http://localhost:${PORT:-3000}
       - DADDYLIVE_URI=${DADDYLIVE_URI:-https://thedaddy.click}
       - PROXY_CONTENT=${PROXY_CONTENT:-TRUE}
       - SOCKS5=${SOCKS5:-}
@@ -39,7 +39,7 @@ services:
       - "host.docker.internal:host-gateway"  # Allow container to access host network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3232}/health", "||", "exit", "1"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3000}/health", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
       retries: 3

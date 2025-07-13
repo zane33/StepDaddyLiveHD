@@ -6,8 +6,8 @@ import os
 import asyncio
 import httpx
 import pytest
-from StepDaddyLiveHD.step_daddy import StepDaddy
-from StepDaddyLiveHD.backend import fastapi_app
+from freesky.free_sky import StepDaddy
+from freesky.backend import fastapi_app
 from fastapi.testclient import TestClient
 
 client = TestClient(fastapi_app)
