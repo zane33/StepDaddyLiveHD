@@ -12,9 +12,18 @@ log {
 encode @compress gzip
 root * /srv
 
-# Global headers
-header {
-	# Security headers without CSP (handled by Reflex)
+# Streaming endpoints need permissive headers for external players
+@streaming {
+    path /api/stream/* /api/content/* /api/key/* /stream/* /content/* /key/* /playlist.m3u8
+}
+
+# Restrictive headers for non-streaming content
+@non_streaming {
+    not path /api/stream/* /api/content/* /api/key/* /stream/* /content/* /key/* /playlist.m3u8
+}
+
+# Security headers for non-streaming content only
+header @non_streaming {
 	X-Content-Type-Options nosniff
 	X-Frame-Options DENY
 	X-XSS-Protection "1; mode=block"
@@ -22,7 +31,17 @@ header {
 	Permissions-Policy "geolocation=(), microphone=(), camera=()"
 }
 
-# CORS is handled by FastAPI backend - no need for Caddy CORS
+# Permissive headers for streaming content (for VLC and external players)
+header @streaming {
+	X-Content-Type-Options nosniff
+	Access-Control-Allow-Origin "*"
+	Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	Access-Control-Allow-Headers "*"
+	Access-Control-Expose-Headers "*"
+	Cache-Control "no-cache, no-store, must-revalidate"
+	Pragma "no-cache"
+	Expires "0"
+}
 
 # Handle playlist.m3u8 endpoint first (highest priority)
 handle /playlist.m3u8 {

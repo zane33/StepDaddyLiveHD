@@ -204,7 +204,7 @@ class StepDaddy:
         data = "#EXTM3U\n"
         for channel in self.channels:
             entry = f" tvg-logo=\"{channel.logo}\",{channel.name}" if channel.logo else f",{channel.name}"
-            data += f"#EXTINF:-1{entry}\n/api/stream/{channel.id}.m3u8\n"
+            data += f"#EXTINF:-1{entry}\n{config.api_url}/api/stream/{channel.id}.m3u8\n"
         return data
 
     async def schedule(self):

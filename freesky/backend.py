@@ -126,6 +126,20 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
+# Add OPTIONS handler for streaming endpoints to handle CORS preflight requests
+@fastapi_app.options("/stream/{channel_id}.m3u8")
+async def stream_options(channel_id: str):
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
 @fastapi_app.get("/stream/{channel_id}.m3u8")
 async def stream(channel_id: str):
     try:
@@ -140,7 +154,16 @@ async def stream(channel_id: str):
                 return Response(
                     content=cached_data,
                     media_type="application/vnd.apple.mpegurl",
-                    headers={"Content-Disposition": f"attachment; filename={channel_id}.m3u8"}
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                        "Access-Control-Expose-Headers": "*",
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0",
+                        "Accept-Ranges": "bytes"
+                    }
                 )
         
         # Generate new stream with timeout
@@ -162,7 +185,16 @@ async def stream(channel_id: str):
         return Response(
             content=stream_data,
             media_type="application/vnd.apple.mpegurl",
-            headers={"Content-Disposition": f"attachment; filename={channel_id}.m3u8"}
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Expose-Headers": "*",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+                "Accept-Ranges": "bytes"
+            }
         )
     except IndexError:
         return JSONResponse(content={"error": "Stream not found"}, status_code=status.HTTP_404_NOT_FOUND)
@@ -193,6 +225,19 @@ async def key(url: str, host: str):
         logger.error(f"Error getting key: {str(e)}")
         return JSONResponse(content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@fastapi_app.options("/content/{path}")
+async def content_options(path: str):
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS", 
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
 @fastapi_app.get("/content/{path}")
 async def content(path: str):
     try:
@@ -205,6 +250,10 @@ async def content(path: str):
                 proxy_stream(), 
                 media_type="application/octet-stream",
                 headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Expose-Headers": "*",
                     "Cache-Control": "public, max-age=3600",
                     "Accept-Ranges": "bytes",
                     "Transfer-Encoding": "chunked"
@@ -296,25 +345,65 @@ def get_channel(channel_id) -> Optional[Channel]:
     channels = get_channels()  # Use get_channels() to ensure fallback handling
     return next((channel for channel in channels if channel.id == channel_id), None)
 
+@fastapi_app.options("/playlist.m3u8")
+def playlist_options():
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
 @fastapi_app.get("/playlist.m3u8")
 def playlist():
+    """Return the playlist as a response"""
     return Response(
-        content=free_sky.playlist(), 
-        media_type="application/vnd.apple.mpegurl", 
+        content=free_sky.playlist(),
+        media_type="application/vnd.apple.mpegurl",
         headers={
-            "Content-Disposition": "attachment; filename=playlist.m3u8",
-            "Cache-Control": "public, max-age=300"
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Accept-Ranges": "bytes"
+        }
+    )
+
+@fastapi_app.options("/api/playlist.m3u8")
+def api_playlist_options():
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Access-Control-Max-Age": "86400"
         }
     )
 
 @fastapi_app.get("/api/playlist.m3u8")
 def api_playlist():
+    """Return the playlist as a response (API endpoint)"""
     return Response(
-        content=free_sky.playlist(), 
-        media_type="application/vnd.apple.mpegurl", 
+        content=free_sky.playlist(),
+        media_type="application/vnd.apple.mpegurl",
         headers={
-            "Content-Disposition": "attachment; filename=playlist.m3u8",
-            "Cache-Control": "public, max-age=300"
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Accept-Ranges": "bytes"
         }
     )
 

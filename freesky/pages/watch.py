@@ -31,7 +31,8 @@ class WatchState(rx.State):
 
     @rx.var
     def url(self) -> str:
-        return f"/api/stream/{self.route_channel_id}.m3u8"
+        from rxconfig import config
+        return f"{config.api_url}/api/stream/{self.route_channel_id}.m3u8"
 
 
 def uri_card() -> rx.Component:
@@ -52,7 +53,10 @@ def uri_card() -> rx.Component:
             rx.button(
                 rx.text("VLC"),
                 rx.icon("external-link", size=15),
-                on_click=rx.redirect(f"vlc://{WatchState.url}", is_external=True),
+                on_click=[
+                    rx.set_clipboard(WatchState.url),
+                    rx.toast("Stream URL copied! Open VLC → Media → Open Network Stream and paste the URL"),
+                ],
                 size="1",
                 color_scheme="orange",
                 variant="soft",
@@ -164,7 +168,10 @@ def watch() -> rx.Component:
                                             rx.button(
                                                 rx.text("VLC"),
                                                 rx.icon("external-link", size=15),
-                                                on_click=rx.redirect(f"vlc://{WatchState.url}", is_external=True),
+                                                on_click=[
+                                                    rx.set_clipboard(WatchState.url),
+                                                    rx.toast("Stream URL copied! Open VLC → Media → Open Network Stream and paste the URL"),
+                                                ],
                                                 size="1",
                                                 color_scheme="orange",
                                                 variant="soft",
