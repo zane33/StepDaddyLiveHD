@@ -1,5 +1,5 @@
 services:
-  step-daddy-live-hd:
+  freesky:
     build:
       context: .
       dockerfile: Dockerfile
@@ -29,9 +29,9 @@ services:
         reservations:
           memory: 512M
     networks:
-      step-daddy-network:
+      freesky-network:
         aliases:
-          - step-daddy-live-hd
+          - freesky
     dns:
       - 8.8.8.8  # Use Google DNS as primary
       - 1.1.1.1  # Use Cloudflare DNS as backup
@@ -46,7 +46,7 @@ services:
       start_period: 60s
 
 networks:
-  step-daddy-network:
+  freesky-network:
     driver: bridge
     # Enable internet access
     driver_opts:
